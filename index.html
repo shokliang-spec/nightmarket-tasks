@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>攤車任務板</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0a; --surface: #1a1915; --surface2: #232219; --border: #2e2d26;
+    --accent: #f5a623; --accent2: #e05c2f; --green: #4caf72;
+    --text: #f0ede0; --muted: #8a876f; --tag-bg: #2a2920;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.4;
+  }
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,14,10,0.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: 56px;
+  }
+  .logo { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; }
+  .logo-icon { font-size: 20px; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .badge-count { background: var(--accent2); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; font-family: 'Space Mono', monospace; }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; flex-shrink: 0; }
+  .sync-dot.connected { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .sync-label { font-size: 11px; color: var(--muted); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  main { position: relative; z-index: 1; padding: 20px; max-width: 900px; margin: 0 auto; }
+
+  .share-bar { background: rgba(245,166,35,0.06); border: 1px solid rgba(245,166,35,0.2); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 13px; flex-wrap: wrap; }
+  .share-bar input { flex: 1; min-width: 160px; background: var(--surface2); font-family: 'Space Mono', monospace; font-size: 12px; }
+
+  .stats-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 80px; }
+  .stat-num { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.05em; }
+  .num-pending { color: var(--accent); } .num-ongoing { color: #4a9eff; } .num-done { color: var(--green); }
+
+  .add-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.05em; }
+  input, select, textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); padding: 9px 12px; font-size: 14px; font-family: 'Noto Sans TC', sans-serif; outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: none; height: 60px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; font-family: 'Noto Sans TC', sans-serif; }
+  .btn-primary { background: var(--accent); color: #0f0e0a; }
+  .btn-primary:hover { background: #ffc04a; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 5px; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-danger { background: transparent; color: #e05c2f; border: 1px solid transparent; }
+  .btn-danger:hover { background: rgba(224,92,47,0.12); }
+  .btn-success { background: rgba(76,175,114,0.15); color: var(--green); border: 1px solid rgba(76,175,114,0.3); }
+  .btn-success:hover { background: rgba(76,175,114,0.25); }
+
+  .tasks-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-btn { padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all 0.12s; font-family: 'Noto Sans TC', sans-serif; }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(245,166,35,0.1); }
+
+  .task-list { display: flex; flex-direction: column; gap: 10px; }
+  .task-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; align-items: flex-start; gap: 14px; transition: border-color 0.15s; animation: slideIn 0.2s ease-out; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .task-card:hover { border-color: #3a3930; }
+  .task-card.done { opacity: 0.45; }
+  .task-card.done .task-route { text-decoration: line-through; }
+  .task-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .dot-pending { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .dot-ongoing { background: #4a9eff; box-shadow: 0 0 6px #4a9eff; }
+  .dot-done    { background: var(--green); }
+  .task-body { flex: 1; min-width: 0; }
+  .task-route { font-size: 15px; font-weight: 700; margin-bottom: 5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .arrow { color: var(--accent2); font-size: 16px; }
+  .market-tag { background: var(--tag-bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 13px; font-weight: 700; }
+  .cart-name { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--accent); background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.2); border-radius: 4px; padding: 1px 8px; }
+  .task-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 4px; align-items: center; }
+  .assignee-badge { background: rgba(74,158,255,0.12); color: #4a9eff; border: 1px solid rgba(74,158,255,0.25); border-radius: 4px; padding: 1px 7px; font-size: 11px; }
+  .task-note { margin-top: 6px; font-size: 12px; color: #7a7860; background: var(--surface2); border-radius: 5px; padding: 5px 9px; border-left: 2px solid var(--border); }
+  .task-actions { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); font-size: 14px; }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+  .loading-overlay { position: fixed; inset: 0; background: rgba(15,14,10,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 14px; }
+  .loading-spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--muted); font-size: 14px; }
+
+  @media (max-width: 560px) {
+    .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+    main { padding: 12px; } header { padding: 0 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">連線到 Firebase 中…</div>
+</div>
+
+<header>
+  <div class="logo"><span class="logo-icon">🛒</span> 攤車任務板</div>
+  <div class="header-right">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span class="sync-label" id="sync-label">連線中</span>
+    <span class="badge-count" id="pending-badge">0 待辦</span>
+  </div>
+</header>
+
+<main>
+  <div class="share-bar">
+    <span>🔗 分享給同事：</span>
+    <input id="share-url" readonly onclick="this.select()" value="">
+    <button class="btn btn-ghost btn-sm" onclick="copyShare()">複製連結</button>
+    <span id="copy-msg" style="font-size:12px;color:var(--green);display:none">已複製！</span>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-chip"><span class="stat-num num-pending" id="cnt-pending">0</span><span class="stat-label">待辦</span></div>
+    <div class="stat-chip"><span class="stat-num num-ongoing" id="cnt-ongoing">0</span><span class="stat-label">進行中</span></div>
+    <div class="stat-chip"><span class="stat-num num-done" id="cnt-done">0</span><span class="stat-label">已完成</span></div>
+    <div class="stat-chip"><span class="stat-num" id="cnt-total" style="color:var(--muted)">0</span><span class="stat-label">全部</span></div>
+  </div>
+
+  <div class="add-section">
+    <div class="section-title">➕ 新增推車任務</div>
+    <div class="form-grid">
+      <div class="form-group"><label>從哪個夜市出發</label><input id="f-from" type="text" placeholder="例：花園夜市" list="markets-list"></div>
+      <div class="form-group"><label>推到哪個夜市</label><input id="f-to" type="text" placeholder="例：大東夜市" list="markets-list"></div>
+    </div>
+    <div class="form-grid three">
+      <div class="form-group"><label>攤車名稱 / 編號</label><input id="f-cart" type="text" placeholder="例：車A / 滷味01"></div>
+      <div class="form-group"><label>負責人</label><input id="f-assignee" type="text" placeholder="例：小明" list="members-list"></div>
+      <div class="form-group"><label>日期時間</label><input id="f-time" type="datetime-local"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>備註（格位、特殊說明）</label>
+      <textarea id="f-note" placeholder="例：格位 B-12，需要繞後門進入"></textarea>
+    </div>
+    <button class="btn btn-primary" id="add-btn" onclick="addTask()">＋ 建立任務</button>
+    <datalist id="markets-list"></datalist>
+    <datalist id="members-list"></datalist>
+  </div>
+
+  <div class="tasks-header">
+    <div class="section-title" style="margin-bottom:0">任務列表</div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="setFilter('all',this)">全部</button>
+      <button class="filter-btn" onclick="setFilter('pending',this)">待辦</button>
+      <button class="filter-btn" onclick="setFilter('ongoing',this)">進行中</button>
+      <button class="filter-btn" onclick="setFilter('done',this)">已完成</button>
+    </div>
+  </div>
+  <div class="task-list" id="task-list"></div>
+</main>
+
+<script type="module">
+import { initializeApp }      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, push, update, remove, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDoT4cAuLGTC9ZAP3uG-0tRNRDsAD-l1-4",
+  authDomain: "nightmarket-tasks.firebaseapp.com",
+  databaseURL: "https://nightmarket-tasks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nightmarket-tasks",
+  storageBucket: "nightmarket-tasks.firebasestorage.app",
+  messagingSenderId: "241280209238",
+  appId: "1:241280209238:web:325be906e04a95987986f7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+const tasksRef = ref(db, 'tasks');
+
+let tasks  = {};
+let filter = 'all';
+
+// ── Connection status ──────────────────────────────────────
+onValue(ref(db, '.info/connected'), snap => {
+  const ok  = snap.val();
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot' + (ok ? ' connected' : '');
+  lbl.textContent = ok ? '已連線' : '離線中';
+});
+
+// ── Realtime listener ──────────────────────────────────────
+onValue(tasksRef, snap => {
+  tasks = snap.val() || {};
+  document.getElementById('loading-overlay').style.display = 'none';
+  updateDataLists();
+  renderList();
+});
+
+// ── ADD ────────────────────────────────────────────────────
+window.addTask = async function() {
+  const from     = document.getElementById('f-from').value.trim();
+  const to       = document.getElementById('f-to').value.trim();
+  const cart     = document.getElementById('f-cart').value.trim();
+  const assignee = document.getElementById('f-assignee').value.trim();
+  const time     = document.getElementById('f-time').value;
+  const note     = document.getElementById('f-note').value.trim();
+  if (!from || !to || !cart) { alert('請填寫：出發夜市、目的地夜市、攤車名稱'); return; }
+  const btn = document.getElementById('add-btn');
+  btn.disabled = true;
+  try {
+    await push(tasksRef, { from, to, cart, assignee, time, note, status: 'pending', createdAt: serverTimestamp() });
+    ['f-from','f-to','f-cart','f-assignee','f-note'].forEach(id => document.getElementById(id).value = '');
+    const now = new Date(); now.setMinutes(Math.ceil(now.getMinutes()/15)*15,0,0);
+    document.getElementById('f-time').value = now.toISOString().slice(0,16);
+  } finally { btn.disabled = false; }
+};
+
+// ── STATUS / DELETE ────────────────────────────────────────
+window.setStatus  = (id, status) => update(ref(db, 'tasks/'+id), { status });
+window.deleteTask = id => { if (confirm('確定刪除這個任務？')) remove(ref(db, 'tasks/'+id)); };
+
+// ── FILTER ─────────────────────────────────────────────────
+window.setFilter = (f, el) => {
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+};
+
+// ── SHARE ──────────────────────────────────────────────────
+window.copyShare = () => {
+  navigator.clipboard.writeText(document.getElementById('share-url').value).then(() => {
+    const msg = document.getElementById('copy-msg');
+    msg.style.display = 'inline';
+    setTimeout(() => msg.style.display = 'none', 2000);
+  });
+};
+
+// ── RENDER ─────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderList() {
+  const list = document.getElementById('task-list');
+  const arr  = Object.entries(tasks)
+    .map(([id,t]) => ({id,...t}))
+    .sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+  const shown = filter === 'all' ? arr : arr.filter(t => t.status === filter);
+
+  const c = {pending:0, ongoing:0, done:0};
+  arr.forEach(t => c[t.status] = (c[t.status]||0)+1);
+  document.getElementById('cnt-pending').textContent = c.pending||0;
+  document.getElementById('cnt-ongoing').textContent = c.ongoing||0;
+  document.getElementById('cnt-done').textContent    = c.done||0;
+  document.getElementById('cnt-total').textContent   = arr.length;
+  document.getElementById('pending-badge').textContent = (c.pending||0)+' 待辦';
+
+  if (!shown.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🛒</div>目前沒有任務</div>`;
+    return;
+  }
+  const statusLabel = {pending:'待辦', ongoing:'進行中', done:'已完成'};
+  const dotClass    = {pending:'dot-pending', ongoing:'dot-ongoing', done:'dot-done'};
+  list.innerHTML = shown.map(t => {
+    const timeStr = t.time ? new Date(t.time).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    return `
+    <div class="task-card ${t.status==='done'?'done':''}">
+      <div class="task-status-dot ${dotClass[t.status]||'dot-pending'}" title="${statusLabel[t.status]||''}"></div>
+      <div class="task-body">
+        <div class="task-route">
+          <span class="market-tag">${esc(t.from)}</span>
+          <span class="arrow">→</span>
+          <span class="market-tag">${esc(t.to)}</span>
+          <span class="cart-name">${esc(t.cart)}</span>
+        </div>
+        <div class="task-meta">
+          ${t.assignee ? `<span class="assignee-badge">👤 ${esc(t.assignee)}</span>` : ''}
+          ${timeStr    ? `<span class="meta-item">🕐 ${timeStr}</span>`               : ''}
+          <span class="meta-item" style="color:#3a3930">${statusLabel[t.status]||''}</span>
+        </div>
+        ${t.note ? `<div class="task-note">${esc(t.note)}</div>` : ''}
+      </div>
+      <div class="task-actions">
+        ${t.status!=='ongoing' ? `<button class="btn btn-ghost btn-sm"   onclick="setStatus('${t.id}','ongoing')">進行中</button>` : ''}
+        ${t.status!=='done'    ? `<button class="btn btn-success btn-sm" onclick="setStatus('${t.id}','done')">✓ 完成</button>`   : ''}
+        ${t.status!=='pending' ? `<button class="btn btn-ghost btn-sm"   onclick="setStatus('${t.id}','pending')">↩ 重開</button>`: ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateDataLists() {
+  const arr     = Object.values(tasks);
+  const markets = [...new Set(arr.flatMap(t=>[t.from,t.to]).filter(Boolean))];
+  const members = [...new Set(arr.map(t=>t.assignee).filter(Boolean))];
+  document.getElementById('markets-list').innerHTML = markets.map(m=>`<option value="${esc(m)}">`).join('');
+  document.getElementById('members-list').innerHTML = members.map(m=>`<option value="${esc(m)}">`).join('');
+}
+
+// Share URL = this file's URL (no hash needed, data is in Firebase)
+document.getElementById('share-url').value = location.href.split('?')[0].split('#')[0];
+
+// Default datetime
+const now = new Date(); now.setMinutes(Math.ceil(now.getMinutes()/15)*15,0,0);
+document.getElementById('f-time').value = now.toISOString().slice(0,16);
+</script>
+</body>
+</html>
