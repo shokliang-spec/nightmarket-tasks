@@ -405,7 +405,11 @@ body {
 
     <div class="home-actions">
       <button class="action-btn" onclick="openManageMarkets()">🗺 管理夜市</button>
-      <button class="action-btn primary" onclick="openAddVendor()">＋ 新增攤商</button>
+      <button class="action-btn" onclick="openAddVendor()">＋ 新增攤商</button>
+    </div>
+
+    <div style="padding:0 16px 12px">
+      <button class="cta-btn" style="border-radius:14px;font-size:15px" onclick="openNewTask()">＋ 新增推車任務</button>
     </div>
 
     <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
@@ -686,6 +690,24 @@ window.vcTouchCancel = function(id) {
 window.vcClick = function(id) {
   if (!lpTimers[id] && lpTimers[id] !== undefined) return; // was long press
   startDraft(id);
+};
+
+// ── 新增任務入口（從首頁按鈕）──
+window.openNewTask = function() {
+  const arr = Object.entries(vendors).map(([id,v])=>({id,...v}));
+  if (!arr.length) {
+    alert('請先新增攤商，再來新增任務！');
+    return;
+  }
+  if (arr.length === 1) {
+    // 只有一個攤商，直接進入
+    startDraft(arr[0].id);
+    return;
+  }
+  // 多個攤商：滾動到攤商格讓用戶點選，並提示
+  document.querySelector('.home-sub').textContent = '👇 點選下方攤商開始';
+  document.getElementById('vendor-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast('請點選攤商來新增任務');
 };
 
 function startDraft(vendorId) {
