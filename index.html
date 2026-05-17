@@ -572,6 +572,35 @@ body {
   </div>
 </div>
 
+<!-- ══════════════ MODAL: TASK EDIT ══════════════ -->
+<div class="modal-overlay" id="task-modal" onclick="closeTaskModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">編輯任務</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div id="tm-route" style="font-size:14px;font-weight:700;margin-bottom:4px"></div>
+      <div id="tm-vendor" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-field">
+      <label class="input-label">日期</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="tm-day-grid"></div>
+    </div>
+    <div class="modal-field">
+      <label class="input-label">負責人</label>
+      <input class="input-field" id="tm-assignee" type="text" placeholder="例：小明">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">備註</label>
+      <input class="input-field" id="tm-note" type="text" placeholder="例：格位 B-12">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn delete" onclick="delTaskFromModal()">刪除</button>
+      <button class="modal-btn cancel" onclick="closeTaskModal()">取消</button>
+      <button class="modal-btn save" onclick="saveTaskEdit()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -895,6 +924,7 @@ function renderTasksSection() {
           ${t.status!=='ongoing'?`<button class="ts-btn go" onclick="setTaskStatus('${t.id}','ongoing')">進行中</button>`:''}
           ${t.status!=='done'   ?`<button class="ts-btn ok" onclick="setTaskStatus('${t.id}','done')">✓ 完成</button>`:''}
           ${t.status!=='pending'?`<button class="ts-btn" onclick="setTaskStatus('${t.id}','pending')">↩ 重開</button>`:''}
+          <button class="ts-btn" style="border-color:rgba(61,142,255,0.3);color:var(--blue);background:rgba(61,142,255,0.08)" onclick="openEditTask('${t.id}')">✏️ 編輯</button>
           <button class="ts-btn del" onclick="delTask('${t.id}')">✕</button>
         </div>
       </div>
@@ -903,6 +933,82 @@ function renderTasksSection() {
 
 window.setTaskStatus = (id,s) => update(ref(db,'tasks/'+id),{status:s});
 window.delTask = id => { if(confirm('確定刪除？')) remove(ref(db,'tasks/'+id)); };
+
+// ── TASK EDIT MODAL ──
+let editingTaskId = null;
+let editingTaskDay = null;
+
+window.openEditTask = function(id) {
+  const t = tasks[id]; if (!t) return;
+  editingTaskId = id;
+  editingTaskDay = t.day || null;
+
+  document.getElementById('tm-route').innerHTML =
+    `${t.vendorIcon||'🛒'} <span style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 7px">${esc(t.fromName)}</span> → <span style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 7px">${esc(t.toName)}</span>`;
+  document.getElementById('tm-vendor').textContent = t.vendorName + (t.dayLabel ? ' · ' + t.dayLabel : '');
+  document.getElementById('tm-assignee').value = t.assignee || '';
+  document.getElementById('tm-note').value = t.note || '';
+
+  // build day grid (today + next 6 days)
+  const DAYS = ['週日','週一','週二','週三','週四','週五','週六'];
+  const today = new Date();
+  let dayHtml = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    const iso = d.toISOString().slice(0,10);
+    const dow = DAYS[d.getDay()];
+    const label = `${d.getMonth()+1}/${d.getDate()}`;
+    const sel = iso === editingTaskDay ? 'border-color:var(--accent);color:var(--accent);background:rgba(255,149,0,0.1)' : '';
+    dayHtml += `<div onclick="tmPickDay('${iso}','${dow} ${label}',this)"
+      style="border:1.5px solid var(--border);border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer;transition:all 0.15s;${sel}">
+      <div style="font-size:13px;font-weight:700">${dow}</div>
+      <div style="font-size:10px;color:var(--muted)">${label}</div>
+    </div>`;
+  }
+  document.getElementById('tm-day-grid').innerHTML = dayHtml;
+
+  document.getElementById('task-modal').classList.add('open');
+};
+
+window.tmPickDay = function(iso, label, el) {
+  editingTaskDay = iso;
+  document.querySelectorAll('#tm-day-grid > div').forEach(d => {
+    d.style.borderColor = 'var(--border)';
+    d.style.color = 'var(--text)';
+    d.style.background = 'transparent';
+  });
+  el.style.borderColor = 'var(--accent)';
+  el.style.color = 'var(--accent)';
+  el.style.background = 'rgba(255,149,0,0.1)';
+  document.getElementById('tm-vendor').textContent =
+    (tasks[editingTaskId]?.vendorName||'') + ' · ' + label;
+};
+
+window.saveTaskEdit = async function() {
+  const assignee = document.getElementById('tm-assignee').value.trim();
+  const note     = document.getElementById('tm-note').value.trim();
+  const DAYS = ['週日','週一','週二','週三','週四','週五','週六'];
+  let dayLabel = tasks[editingTaskId]?.dayLabel || '';
+  if (editingTaskDay) {
+    const d = new Date(editingTaskDay + 'T00:00:00');
+    dayLabel = `${DAYS[d.getDay()]} ${d.getMonth()+1}/${d.getDate()}`;
+  }
+  await update(ref(db,'tasks/'+editingTaskId), { assignee, note, day: editingTaskDay, dayLabel });
+  document.getElementById('task-modal').classList.remove('open');
+  showToast('✏️ 任務已更新');
+};
+
+window.delTaskFromModal = function() {
+  if (!confirm('確定刪除這個任務？')) return;
+  remove(ref(db,'tasks/'+editingTaskId));
+  document.getElementById('task-modal').classList.remove('open');
+  showToast('🗑 任務已刪除');
+};
+
+window.closeTaskModal = function(e) {
+  if (e && e.target !== document.getElementById('task-modal')) return;
+  document.getElementById('task-modal').classList.remove('open');
+};
 
 // ══════════════════════════════════════════════
 // VENDOR MODAL
