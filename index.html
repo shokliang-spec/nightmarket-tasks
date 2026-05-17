@@ -556,7 +556,7 @@ body {
 <div class="modal-overlay" id="market-modal" onclick="closeMarketModal(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">新增夜市</div>
+    <div class="modal-title" id="market-modal-title">新增夜市</div>
     <div class="modal-field">
       <label class="input-label">夜市名稱</label>
       <input class="input-field" id="mm-name" type="text" placeholder="例：花園夜市">
@@ -565,7 +565,7 @@ body {
       <label class="input-label">選擇圖示</label>
       <div class="emoji-picker" id="market-emoji-picker"></div>
     </div>
-    <div class="modal-actions">
+    <div class="modal-actions" id="market-modal-actions">
       <button class="modal-btn cancel" onclick="closeMarketModal()">取消</button>
       <button class="modal-btn save" onclick="saveMarket()">儲存</button>
     </div>
@@ -803,13 +803,15 @@ function renderMarketList(containerId, onSelect, excludeId) {
     return;
   }
   el.innerHTML = arr.map(m => `
-    <div class="market-card" onclick='marketSelect_${containerId}("${m.id}")'>
+    <div class="market-card" data-market-id="${m.id}">
       <div class="market-icon">${m.icon||'🌙'}</div>
       <div class="market-name">${esc(m.name)}</div>
       <div class="market-check">✓</div>
     </div>
   `).join('');
-  window[`marketSelect_${containerId}`] = onSelect;
+  el.querySelectorAll('.market-card').forEach(card => {
+    card.addEventListener('click', () => onSelect(card.dataset.marketId));
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -997,6 +999,7 @@ function renderMarketsManage() {
     <div class="mkt-manage-item">
       <div class="mkt-manage-icon">${m.icon||'🌙'}</div>
       <div class="mkt-manage-name">${esc(m.name)}</div>
+      <button class="mkt-del-btn" style="border-color:rgba(61,142,255,0.3);color:var(--blue);margin-right:6px" onclick="openEditMarket('${m.id}')">編輯</button>
       <button class="mkt-del-btn" onclick="deleteMarket('${m.id}')">刪除</button>
     </div>
   `).join('');
@@ -1010,10 +1013,33 @@ window.deleteMarket = async function(id) {
 
 const MARKET_EMOJIS = ['🌙','🏮','🎪','🎡','🌟','🍜','🔥','🎉','🛖','🏙️','🌃','✨'];
 
+let editingMarketId = null;
+
 window.openAddMarket = function() {
+  editingMarketId = null;
   selectedMarketEmoji = MARKET_EMOJIS[0];
+  document.getElementById('market-modal-title').textContent = '新增夜市';
   document.getElementById('mm-name').value = '';
   buildMarketEmojiPicker();
+  document.getElementById('market-modal-actions').innerHTML = `
+    <button class="modal-btn cancel" onclick="closeMarketModal()">取消</button>
+    <button class="modal-btn save" onclick="saveMarket()">儲存</button>
+  `;
+  document.getElementById('market-modal').classList.add('open');
+};
+
+window.openEditMarket = function(id) {
+  const m = markets[id]; if (!m) return;
+  editingMarketId = id;
+  selectedMarketEmoji = m.icon || MARKET_EMOJIS[0];
+  document.getElementById('market-modal-title').textContent = '編輯夜市';
+  document.getElementById('mm-name').value = m.name;
+  buildMarketEmojiPicker();
+  document.getElementById('market-modal-actions').innerHTML = `
+    <button class="modal-btn delete" onclick="deleteMarket('${id}');closeMarketModal()">刪除</button>
+    <button class="modal-btn cancel" onclick="closeMarketModal()">取消</button>
+    <button class="modal-btn save" onclick="saveMarket()">儲存</button>
+  `;
   document.getElementById('market-modal').classList.add('open');
 };
 
@@ -1032,9 +1058,14 @@ window.closeMarketModal = function(e) {
 window.saveMarket = async function() {
   const name = document.getElementById('mm-name').value.trim();
   if (!name) { alert('請輸入夜市名稱'); return; }
-  await push(marketsRef, { name, icon: selectedMarketEmoji });
+  if (editingMarketId) {
+    await update(ref(db,'markets/'+editingMarketId), { name, icon: selectedMarketEmoji });
+    showToast('✏️ 夜市已更新');
+  } else {
+    await push(marketsRef, { name, icon: selectedMarketEmoji });
+    showToast('✅ 夜市已新增');
+  }
   document.getElementById('market-modal').classList.remove('open');
-  showToast('✅ 夜市已新增');
 };
 
 // ══════════════════════════════════════════════
