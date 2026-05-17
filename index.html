@@ -533,6 +533,14 @@ body {
       <div class="emoji-picker" id="emoji-picker"></div>
     </div>
     <div class="modal-field">
+      <label class="input-label">聯絡人姓名（可留空）</label>
+      <input class="input-field" id="vm-contact" type="text" placeholder="例：陳老闆">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">聯絡電話（可留空）</label>
+      <input class="input-field" id="vm-phone" type="tel" placeholder="例：0912-345-678">
+    </div>
+    <div class="modal-field">
       <label class="input-label">備註（可留空）</label>
       <input class="input-field" id="vm-note" type="text" placeholder="例：大台車">
     </div>
@@ -653,6 +661,7 @@ function renderVendorGrid() {
       <div class="vendor-icon">${v.icon||'🛒'}</div>
       <div class="vendor-name">${esc(v.name)}</div>
       ${v.note ? `<div class="vendor-note">${esc(v.note)}</div>` : ''}
+      ${v.contact||v.phone ? `<div class="vendor-note">${v.contact?esc(v.contact):''}${v.contact&&v.phone?' · ':''}${v.phone?`<a href="tel:${esc(v.phone)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">📞 ${esc(v.phone)}</a>`:''}</div>` : ''}
     </div>
   `).join('');
 }
@@ -890,6 +899,8 @@ window.openAddVendor = function() {
   editingVendorId = null;
   document.getElementById('vendor-modal-title').textContent = '新增攤商';
   document.getElementById('vm-name').value = '';
+  document.getElementById('vm-contact').value = '';
+  document.getElementById('vm-phone').value = '';
   document.getElementById('vm-note').value = '';
   buildEmojiPicker('emoji-picker', '🛒');
   document.getElementById('vendor-modal-actions').innerHTML = `
@@ -904,6 +915,8 @@ window.openEditVendor = function(id) {
   editingVendorId = id;
   document.getElementById('vendor-modal-title').textContent = '編輯攤商';
   document.getElementById('vm-name').value = v.name;
+  document.getElementById('vm-contact').value = v.contact||'';
+  document.getElementById('vm-phone').value = v.phone||'';
   document.getElementById('vm-note').value = v.note||'';
   buildEmojiPicker('emoji-picker', v.icon||'🛒');
   document.getElementById('vendor-modal-actions').innerHTML = `
@@ -920,10 +933,12 @@ window.closeVendorModal = function(e) {
 };
 
 window.saveVendor = async function() {
-  const name = document.getElementById('vm-name').value.trim();
-  const note = document.getElementById('vm-note').value.trim();
+  const name    = document.getElementById('vm-name').value.trim();
+  const contact = document.getElementById('vm-contact').value.trim();
+  const phone   = document.getElementById('vm-phone').value.trim();
+  const note    = document.getElementById('vm-note').value.trim();
   if (!name) { alert('請輸入攤商名稱'); return; }
-  const data = { name, icon: selectedEmoji, note };
+  const data = { name, icon: selectedEmoji, contact, phone, note };
   if (editingVendorId) await update(ref(db,'vendors/'+editingVendorId), data);
   else await push(vendorsRef, data);
   document.getElementById('vendor-modal').classList.remove('open');
