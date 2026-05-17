@@ -795,7 +795,16 @@ window.selectTo = function(id) {
 // ══════════════════════════════════════════════
 // MARKET LIST RENDERER
 // ══════════════════════════════════════════════
+// 全域 callback 儲存，確保 inline onclick 可以呼叫
+const marketCallbacks = {};
+
+window.marketCardClick = function(containerId, marketId) {
+  const cb = marketCallbacks[containerId];
+  if (cb) cb(marketId);
+};
+
 function renderMarketList(containerId, onSelect, excludeId) {
+  marketCallbacks[containerId] = onSelect;  // 存起來
   const el  = document.getElementById(containerId);
   const arr = Object.entries(markets).map(([id,m])=>({id,...m})).filter(m => m.id !== excludeId);
   if (!arr.length) {
@@ -803,15 +812,12 @@ function renderMarketList(containerId, onSelect, excludeId) {
     return;
   }
   el.innerHTML = arr.map(m => `
-    <div class="market-card" data-market-id="${m.id}">
+    <div class="market-card" onclick="marketCardClick('${containerId}','${m.id}')">
       <div class="market-icon">${m.icon||'🌙'}</div>
       <div class="market-name">${esc(m.name)}</div>
       <div class="market-check">✓</div>
     </div>
   `).join('');
-  el.querySelectorAll('.market-card').forEach(card => {
-    card.addEventListener('click', () => onSelect(card.dataset.marketId));
-  });
 }
 
 // ══════════════════════════════════════════════
