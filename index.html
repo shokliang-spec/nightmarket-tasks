@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>攤車任務板</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Zen+Dots&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #111010;
+  --surface: #1c1b1a;
+  --surface2: #252422;
+  --border: #333230;
+  --accent: #ff9500;
+  --accent2: #ff5f1f;
+  --blue: #3d8eff;
+  --green: #34c759;
+  --red: #ff3b30;
+  --text: #f2ede4;
+  --muted: #7a7670;
+  --card-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ═══ APP SHELL ═══ */
+#app { width: 100%; height: 100dvh; position: relative; overflow: hidden; }
+
+/* ═══ PAGES ═══ */
+.page {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  background: var(--bg);
+  will-change: transform;
+}
+.page.active   { transform: translateX(0); }
+.page.exit-left{ transform: translateX(-30%); }
+
+/* ═══ TOPBAR ═══ */
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.back-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 18px; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.back-btn:active { background: var(--border); }
+.topbar-title { font-size: 17px; font-weight: 700; flex: 1; }
+.topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.step-badge {
+  font-family: 'Zen Dots', monospace;
+  font-size: 11px; color: var(--accent);
+  background: rgba(255,149,0,0.12);
+  border: 1px solid rgba(255,149,0,0.25);
+  border-radius: 6px; padding: 3px 8px;
+  flex-shrink: 0;
+}
+
+/* ═══ SCROLL CONTENT ═══ */
+.scroll-content {
+  flex: 1; overflow-y: auto;
+  padding: 16px 16px 100px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ═══ PROGRESS BAR ═══ */
+.progress-bar {
+  height: 3px; background: var(--surface2);
+  flex-shrink: 0;
+}
+.progress-fill {
+  height: 100%; background: var(--accent);
+  transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ═══ SUMMARY CHIPS (shown in topbar on steps 2-4) ═══ */
+.summary-strip {
+  display: flex; gap: 6px; padding: 8px 16px;
+  flex-shrink: 0; overflow-x: auto;
+  scrollbar-width: none; border-bottom: 1px solid var(--border);
+}
+.summary-strip::-webkit-scrollbar { display: none; }
+.s-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 10px; white-space: nowrap;
+  font-size: 12px; flex-shrink: 0;
+}
+.s-chip.filled { border-color: var(--accent); background: rgba(255,149,0,0.08); color: var(--accent); }
+.s-chip-label { color: var(--muted); font-size: 11px; }
+
+/* ═══ PAGE 1 – VENDOR GRID ═══ */
+#home-page .topbar { border-bottom: none; }
+.home-header {
+  padding: 8px 20px 16px;
+  flex-shrink: 0;
+}
+.home-title {
+  font-family: 'Zen Dots', monospace;
+  font-size: 26px; color: var(--accent);
+  line-height: 1.1;
+}
+.home-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+.home-actions {
+  display: flex; gap: 8px;
+  padding: 0 16px 12px;
+  flex-shrink: 0;
+}
+.action-btn {
+  flex: 1; padding: 10px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all 0.15s; font-family: 'Noto Sans TC', sans-serif;
+}
+.action-btn:active { transform: scale(0.97); }
+.action-btn.primary { background: var(--accent); color: #111; border-color: var(--accent); }
+.action-btn.primary:active { background: #e88a00; }
+
+.vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.vendor-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 8px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+  user-select: none;
+}
+.vendor-card:active { transform: scale(0.94); background: var(--surface2); }
+.vendor-card.selected {
+  border-color: var(--accent);
+  background: rgba(255,149,0,0.08);
+  box-shadow: 0 0 0 3px rgba(255,149,0,0.15);
+}
+.vendor-icon { font-size: 40px; line-height: 1; }
+.vendor-name {
+  font-size: 12px; font-weight: 700; text-align: center;
+  line-height: 1.3; word-break: break-all;
+}
+.vendor-note { font-size: 10px; color: var(--muted); text-align: center; }
+.vendor-card .edit-hint {
+  position: absolute; top: 6px; right: 6px;
+  font-size: 10px; color: var(--muted); opacity: 0;
+  transition: opacity 0.2s;
+}
+.vendor-card.long-pressing .edit-hint { opacity: 1; }
+.vendor-card.long-pressing {
+  border-color: var(--blue);
+  background: rgba(61,142,255,0.08);
+  box-shadow: 0 0 0 3px rgba(61,142,255,0.15);
+}
+
+.empty-vendors {
+  grid-column: 1/-1;
+  text-align: center; padding: 40px 20px;
+  color: var(--muted); font-size: 14px;
+}
+.empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+/* ═══ PAGE 2 – DAY PICKER ═══ */
+.day-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.day-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 20px 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; transition: all 0.18s;
+}
+.day-card:active { transform: scale(0.96); }
+.day-card.today { border-color: var(--accent); }
+.day-card.selected { background: rgba(255,149,0,0.1); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,149,0,0.15); }
+.day-kanji { font-size: 32px; font-weight: 900; line-height: 1; }
+.day-label { font-size: 12px; color: var(--muted); }
+.day-today-badge {
+  font-size: 10px; background: var(--accent); color: #111;
+  border-radius: 4px; padding: 1px 6px; font-weight: 700;
+}
+
+/* ═══ PAGE 3/4 – MARKET PICKER ═══ */
+.market-list { display: flex; flex-direction: column; gap: 8px; }
+.market-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 18px 20px;
+  display: flex; align-items: center; gap: 14px;
+  cursor: pointer; transition: all 0.18s;
+}
+.market-card:active { transform: scale(0.98); background: var(--surface2); }
+.market-card.selected { border-color: var(--accent); background: rgba(255,149,0,0.08); }
+.market-icon { font-size: 28px; flex-shrink: 0; }
+.market-name { font-size: 16px; font-weight: 700; }
+.market-check { margin-left: auto; font-size: 20px; color: var(--accent); opacity: 0; transition: opacity 0.15s; }
+.market-card.selected .market-check { opacity: 1; }
+
+/* ═══ PAGE 5 – CONFIRM ═══ */
+.confirm-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px; margin-bottom: 16px;
+}
+.confirm-route {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.confirm-market {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 16px; font-weight: 700;
+}
+.confirm-arrow { font-size: 22px; color: var(--accent2); }
+.confirm-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+.confirm-row-label { color: var(--muted); width: 60px; flex-shrink: 0; font-size: 12px; }
+.confirm-row-val { font-weight: 700; }
+
+.input-field {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); padding: 11px 14px;
+  font-size: 15px; font-family: 'Noto Sans TC', sans-serif;
+  outline: none; transition: border-color 0.15s;
+}
+.input-field:focus { border-color: var(--accent); }
+.input-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
+
+/* ═══ BOTTOM CTA ═══ */
+.bottom-cta {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.cta-btn {
+  width: 100%; padding: 16px;
+  background: var(--accent); color: #111;
+  border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 900;
+  cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+  transition: all 0.15s; letter-spacing: 0.02em;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.cta-btn:active { transform: scale(0.98); background: #e88a00; }
+.cta-btn:disabled { background: var(--surface2); color: var(--muted); cursor: not-allowed; transform: none; }
+.cta-btn.green { background: var(--green); }
+.cta-btn.green:active { background: #28a745; }
+
+/* ═══ MODAL (vendor edit / add) ═══ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  width: 100%; background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  max-height: 85dvh; overflow-y: auto;
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+.modal-field { margin-bottom: 14px; }
+.emoji-picker {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+}
+.emoji-opt {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: var(--surface2); border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; cursor: pointer; transition: all 0.12s;
+}
+.emoji-opt.selected { border-color: var(--accent); background: rgba(255,149,0,0.1); }
+.emoji-opt:active { transform: scale(0.9); }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.modal-btn {
+  flex: 1; padding: 13px; border-radius: 12px;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; border: none; font-family: 'Noto Sans TC', sans-serif;
+  transition: all 0.15s;
+}
+.modal-btn.save { background: var(--accent); color: #111; }
+.modal-btn.save:active { background: #e88a00; }
+.modal-btn.cancel { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.modal-btn.delete { background: rgba(255,59,48,0.1); color: var(--red); border: 1px solid rgba(255,59,48,0.2); }
+
+/* ═══ TASK LIST (on home after tasks exist) ═══ */
+.section-hd {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--muted); text-transform: uppercase;
+  padding: 0 16px; margin-bottom: 8px; margin-top: 4px;
+}
+.task-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; margin: 0 16px 8px;
+  padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px;
+}
+.task-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.td-pending { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+.td-ongoing { background: var(--blue); box-shadow: 0 0 5px var(--blue); }
+.td-done    { background: var(--green); }
+.task-body  { flex: 1; min-width: 0; }
+.task-route-row { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.t-market { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 7px; font-size: 13px; }
+.t-arrow  { color: var(--accent2); }
+.t-cart   { font-size: 11px; color: var(--accent); background: rgba(255,149,0,0.1); border: 1px solid rgba(255,149,0,0.2); border-radius: 4px; padding: 1px 7px; }
+.task-meta-row { font-size: 11px; color: var(--muted); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+.task-status-row { display: flex; gap: 5px; margin-top: 8px; }
+.ts-btn {
+  padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  cursor: pointer; border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); font-family: 'Noto Sans TC', sans-serif; transition: all 0.12s;
+}
+.ts-btn.ok  { border-color: rgba(52,199,89,0.4); color: var(--green); background: rgba(52,199,89,0.08); }
+.ts-btn.go  { border-color: rgba(61,142,255,0.4); color: var(--blue); background: rgba(61,142,255,0.08); }
+.ts-btn.del { border-color: rgba(255,59,48,0.2); color: var(--red); background: transparent; }
+
+/* ═══ MANAGE MARKETS PAGE ═══ */
+.mkt-manage-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px;
+}
+.mkt-manage-icon { font-size: 24px; flex-shrink: 0; }
+.mkt-manage-name { font-size: 15px; font-weight: 700; flex: 1; }
+.mkt-del-btn {
+  padding: 5px 10px; border-radius: 7px;
+  background: transparent; color: var(--red);
+  border: 1px solid rgba(255,59,48,0.2);
+  font-size: 12px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+}
+.mkt-del-btn:active { background: rgba(255,59,48,0.1); }
+
+/* ═══ CONN DOT ═══ */
+.conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.conn-dot.on { background: var(--green); box-shadow: 0 0 4px var(--green); }
+.loading-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; z-index: 999;
+}
+.spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* toast */
+.toast {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 18px; font-size: 13px;
+  z-index: 800; opacity: 0; transition: all 0.25s; white-space: nowrap;
+  box-shadow: var(--card-shadow);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loading-screen">
+  <div class="spinner"></div>
+  <div style="color:var(--muted);font-size:13px">連線中…</div>
+</div>
+
+<div id="app">
+
+  <!-- ══════════════ PAGE: HOME ══════════════ -->
+  <div class="page active" id="page-home">
+    <div class="topbar" style="border-bottom:none">
+      <div style="flex:1">
+        <div class="home-title">攤車任務板</div>
+        <div class="home-sub">選擇攤商開始新增任務</div>
+      </div>
+      <div class="conn-dot" id="conn-dot"></div>
+    </div>
+
+    <div class="home-actions">
+      <button class="action-btn" onclick="openManageMarkets()">🗺 管理夜市</button>
+      <button class="action-btn primary" onclick="openAddVendor()">＋ 新增攤商</button>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+      <div class="vendor-grid" id="vendor-grid"></div>
+
+      <div id="tasks-section" style="padding-bottom:20px"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: DAY ══════════════ -->
+  <div class="page" id="page-day">
+    <div class="topbar">
+      <div class="back-btn" onclick="goBack()">‹</div>
+      <div style="flex:1">
+        <div class="topbar-title" id="day-vendor-label">選擇日期</div>
+        <div class="topbar-sub">這次任務是哪一天？</div>
+      </div>
+      <div class="step-badge">1 / 3</div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:33%"></div></div>
+    <div class="scroll-content">
+      <div class="day-grid" id="day-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: FROM MARKET ══════════════ -->
+  <div class="page" id="page-from">
+    <div class="topbar">
+      <div class="back-btn" onclick="goBack()">‹</div>
+      <div style="flex:1">
+        <div class="topbar-title">選擇出發夜市</div>
+        <div class="topbar-sub" id="from-sub"></div>
+      </div>
+      <div class="step-badge">2 / 3</div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:66%"></div></div>
+    <div class="summary-strip" id="from-summary"></div>
+    <div class="scroll-content">
+      <div class="market-list" id="from-market-list"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: TO MARKET ══════════════ -->
+  <div class="page" id="page-to">
+    <div class="topbar">
+      <div class="back-btn" onclick="goBack()">‹</div>
+      <div style="flex:1">
+        <div class="topbar-title">選擇到達夜市</div>
+        <div class="topbar-sub" id="to-sub"></div>
+      </div>
+      <div class="step-badge">3 / 3</div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+    <div class="summary-strip" id="to-summary"></div>
+    <div class="scroll-content">
+      <div class="market-list" id="to-market-list"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: CONFIRM ══════════════ -->
+  <div class="page" id="page-confirm">
+    <div class="topbar">
+      <div class="back-btn" onclick="goBack()">‹</div>
+      <div style="flex:1">
+        <div class="topbar-title">確認任務</div>
+        <div class="topbar-sub">填寫負責人與備註</div>
+      </div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--green)"></div></div>
+    <div class="scroll-content">
+      <div class="confirm-card">
+        <div class="confirm-route">
+          <span class="confirm-market" id="cf-from"></span>
+          <span class="confirm-arrow">→</span>
+          <span class="confirm-market" id="cf-to"></span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-row-label">攤商</span>
+          <span class="confirm-row-val" id="cf-vendor"></span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-row-label">日期</span>
+          <span class="confirm-row-val" id="cf-day"></span>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label class="input-label">負責人</label>
+        <input class="input-field" id="cf-assignee" type="text" placeholder="例：小明">
+      </div>
+      <div class="modal-field">
+        <label class="input-label">備註（格位、特殊說明）</label>
+        <input class="input-field" id="cf-note" type="text" placeholder="例：格位 B-12">
+      </div>
+    </div>
+    <div class="bottom-cta">
+      <button class="cta-btn green" onclick="submitTask()">✓ 建立任務</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ PAGE: MANAGE MARKETS ══════════════ -->
+  <div class="page" id="page-markets">
+    <div class="topbar">
+      <div class="back-btn" onclick="goBack()">‹</div>
+      <div style="flex:1">
+        <div class="topbar-title">管理夜市</div>
+      </div>
+      <button class="action-btn primary" style="flex:none;padding:7px 14px;font-size:13px" onclick="openAddMarket()">＋ 新增</button>
+    </div>
+    <div class="scroll-content" id="markets-manage-list"></div>
+  </div>
+
+</div><!-- end #app -->
+
+<!-- ══════════════ MODAL: VENDOR ══════════════ -->
+<div class="modal-overlay" id="vendor-modal" onclick="closeVendorModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="vendor-modal-title">新增攤商</div>
+    <div class="modal-field">
+      <label class="input-label">攤商名稱</label>
+      <input class="input-field" id="vm-name" type="text" placeholder="例：滷味攤">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">選擇圖示</label>
+      <div class="emoji-picker" id="emoji-picker"></div>
+    </div>
+    <div class="modal-field">
+      <label class="input-label">備註（可留空）</label>
+      <input class="input-field" id="vm-note" type="text" placeholder="例：大台車">
+    </div>
+    <div class="modal-actions" id="vendor-modal-actions"></div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL: MARKET ══════════════ -->
+<div class="modal-overlay" id="market-modal" onclick="closeMarketModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">新增夜市</div>
+    <div class="modal-field">
+      <label class="input-label">夜市名稱</label>
+      <input class="input-field" id="mm-name" type="text" placeholder="例：花園夜市">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">選擇圖示</label>
+      <div class="emoji-picker" id="market-emoji-picker"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeMarketModal()">取消</button>
+      <button class="modal-btn save" onclick="saveMarket()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, push, update, remove, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDoT4cAuLGTC9ZAP3uG-0tRNRDsAD-l1-4",
+  authDomain: "nightmarket-tasks.firebaseapp.com",
+  databaseURL: "https://nightmarket-tasks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nightmarket-tasks",
+  storageBucket: "nightmarket-tasks.firebasestorage.app",
+  messagingSenderId: "241280209238",
+  appId: "1:241280209238:web:325be906e04a95987986f7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── Refs ──
+const vendorsRef = ref(db, 'vendors');
+const marketsRef = ref(db, 'markets');
+const tasksRef   = ref(db, 'tasks');
+
+// ── State ──
+let vendors = {};
+let markets = {};
+let tasks   = {};
+let draft   = {};  // { vendorId, vendorName, vendorIcon, day, dayLabel, from, fromName, to, toName }
+let pageStack = ['page-home'];
+
+// Edit state
+let editingVendorId = null;
+let selectedEmoji   = '🛒';
+let selectedMarketEmoji = '🌙';
+
+// ── Connection ──
+onValue(ref(db, '.info/connected'), s => {
+  document.getElementById('conn-dot').className = 'conn-dot' + (s.val() ? ' on' : '');
+});
+
+// ── Data listeners ──
+let loadedCount = 0;
+function checkLoaded() { if (++loadedCount >= 3) document.getElementById('loading-screen').style.display = 'none'; }
+
+onValue(vendorsRef, s => { vendors = s.val() || {}; renderVendorGrid(); renderTasksSection(); checkLoaded(); });
+onValue(marketsRef, s => { markets = s.val() || {}; renderMarketsManage(); checkLoaded(); });
+onValue(tasksRef,   s => { tasks   = s.val() || {}; renderTasksSection(); checkLoaded(); });
+
+// ══════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════
+function navigate(toId) {
+  const from = document.getElementById(pageStack[pageStack.length-1]);
+  const to   = document.getElementById(toId);
+  from.classList.add('exit-left');
+  to.classList.add('active');
+  pageStack.push(toId);
+  setTimeout(() => from.classList.remove('active','exit-left'), 340);
+}
+
+window.goBack = function() {
+  if (pageStack.length <= 1) return;
+  const cur  = document.getElementById(pageStack.pop());
+  const prev = document.getElementById(pageStack[pageStack.length-1]);
+  cur.classList.remove('active');
+  prev.classList.remove('exit-left');
+  prev.classList.add('active');
+};
+
+// ══════════════════════════════════════════════
+// PAGE 1 – VENDOR GRID
+// ══════════════════════════════════════════════
+function renderVendorGrid() {
+  const grid = document.getElementById('vendor-grid');
+  const arr  = Object.entries(vendors).map(([id,v])=>({id,...v}));
+  if (!arr.length) {
+    grid.innerHTML = `<div class="empty-vendors"><div class="empty-icon">🛒</div>還沒有攤商<br>點右上角新增</div>`;
+    return;
+  }
+  grid.innerHTML = arr.map(v => `
+    <div class="vendor-card" id="vc-${v.id}"
+      data-id="${v.id}"
+      ontouchstart="vcTouchStart(event,'${v.id}')"
+      ontouchend="vcTouchEnd(event,'${v.id}')"
+      ontouchcancel="vcTouchCancel('${v.id}')"
+      onclick="vcClick('${v.id}')">
+      <span class="edit-hint">長按編輯</span>
+      <div class="vendor-icon">${v.icon||'🛒'}</div>
+      <div class="vendor-name">${esc(v.name)}</div>
+      ${v.note ? `<div class="vendor-note">${esc(v.note)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// Long-press logic
+const lpTimers = {};
+window.vcTouchStart = function(e, id) {
+  lpTimers[id] = setTimeout(() => {
+    document.getElementById('vc-'+id)?.classList.add('long-pressing');
+    lpTimers[id] = null;
+    openEditVendor(id);
+  }, 600);
+};
+window.vcTouchEnd = function(e, id) {
+  if (lpTimers[id]) { clearTimeout(lpTimers[id]); lpTimers[id] = null; }
+  document.getElementById('vc-'+id)?.classList.remove('long-pressing');
+};
+window.vcTouchCancel = function(id) {
+  if (lpTimers[id]) { clearTimeout(lpTimers[id]); lpTimers[id] = null; }
+  document.getElementById('vc-'+id)?.classList.remove('long-pressing');
+};
+window.vcClick = function(id) {
+  if (!lpTimers[id] && lpTimers[id] !== undefined) return; // was long press
+  startDraft(id);
+};
+
+function startDraft(vendorId) {
+  const v = vendors[vendorId];
+  if (!v) return;
+  draft = { vendorId, vendorName: v.name, vendorIcon: v.icon||'🛒' };
+  document.getElementById('day-vendor-label').textContent = (v.icon||'🛒') + ' ' + v.name;
+  renderDayGrid();
+  navigate('page-day');
+}
+
+// ══════════════════════════════════════════════
+// PAGE 2 – DAY PICKER
+// ══════════════════════════════════════════════
+const DAYS = ['週日','週一','週二','週三','週四','週五','週六'];
+const DAY_ICONS = ['☀️','🌙','🌙','🌙','🌙','🌙','🎉'];
+
+function renderDayGrid() {
+  const grid = document.getElementById('day-grid');
+  const today = new Date();
+  const todayDow = today.getDay();
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dow = d.getDay();
+    const label = `${d.getMonth()+1}/${d.getDate()}`;
+    const isToday = i === 0;
+    html += `
+    <div class="day-card ${isToday?'today':''}" onclick="selectDay('${d.toISOString().slice(0,10)}','${DAYS[dow]} ${label}')">
+      <div class="day-kanji">${DAYS[dow]}</div>
+      <div class="day-label">${label}</div>
+      ${isToday ? '<div class="day-today-badge">今天</div>' : ''}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+window.selectDay = function(iso, label) {
+  draft.day = iso;
+  draft.dayLabel = label;
+  document.getElementById('from-sub').textContent = draft.vendorIcon + ' ' + draft.vendorName + '・' + label;
+  renderFromSummary();
+  renderMarketList('from-market-list', id => selectFrom(id));
+  navigate('page-from');
+};
+
+// ══════════════════════════════════════════════
+// PAGE 3 – FROM MARKET
+// ══════════════════════════════════════════════
+function renderFromSummary() {
+  document.getElementById('from-summary').innerHTML = `
+    <div class="s-chip filled">${draft.vendorIcon} ${esc(draft.vendorName)}</div>
+    <div class="s-chip filled">📅 ${draft.dayLabel}</div>
+  `;
+}
+
+window.selectFrom = function(id) {
+  const m = markets[id];
+  draft.from = id; draft.fromName = m.name;
+  document.getElementById('to-sub').textContent = '從 ' + m.icon + ' ' + m.name + ' 出發';
+  renderToSummary();
+  renderMarketList('to-market-list', id2 => selectTo(id2), id);
+  navigate('page-to');
+};
+
+// ══════════════════════════════════════════════
+// PAGE 4 – TO MARKET
+// ══════════════════════════════════════════════
+function renderToSummary() {
+  const mf = markets[draft.from];
+  document.getElementById('to-summary').innerHTML = `
+    <div class="s-chip filled">${draft.vendorIcon} ${esc(draft.vendorName)}</div>
+    <div class="s-chip filled">📅 ${draft.dayLabel}</div>
+    <div class="s-chip filled">${mf?.icon||'📍'} ${esc(draft.fromName)}</div>
+  `;
+}
+
+window.selectTo = function(id) {
+  const m = markets[id];
+  draft.to = id; draft.toName = m.name;
+  showConfirm();
+};
+
+// ══════════════════════════════════════════════
+// MARKET LIST RENDERER
+// ══════════════════════════════════════════════
+function renderMarketList(containerId, onSelect, excludeId) {
+  const el  = document.getElementById(containerId);
+  const arr = Object.entries(markets).map(([id,m])=>({id,...m})).filter(m => m.id !== excludeId);
+  if (!arr.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">還沒有夜市，請先在「管理夜市」新增</div>`;
+    return;
+  }
+  el.innerHTML = arr.map(m => `
+    <div class="market-card" onclick='marketSelect_${containerId}("${m.id}")'>
+      <div class="market-icon">${m.icon||'🌙'}</div>
+      <div class="market-name">${esc(m.name)}</div>
+      <div class="market-check">✓</div>
+    </div>
+  `).join('');
+  window[`marketSelect_${containerId}`] = onSelect;
+}
+
+// ══════════════════════════════════════════════
+// PAGE 5 – CONFIRM
+// ══════════════════════════════════════════════
+function showConfirm() {
+  document.getElementById('cf-from').textContent    = (markets[draft.from]?.icon||'') + ' ' + draft.fromName;
+  document.getElementById('cf-to').textContent      = (markets[draft.to]?.icon||'') + ' ' + draft.toName;
+  document.getElementById('cf-vendor').textContent  = draft.vendorIcon + ' ' + draft.vendorName;
+  document.getElementById('cf-day').textContent     = draft.dayLabel;
+  document.getElementById('cf-assignee').value = '';
+  document.getElementById('cf-note').value = '';
+  navigate('page-confirm');
+}
+
+window.submitTask = async function() {
+  const assignee = document.getElementById('cf-assignee').value.trim();
+  const note     = document.getElementById('cf-note').value.trim();
+  await push(tasksRef, {
+    vendorId:   draft.vendorId,
+    vendorName: draft.vendorName,
+    vendorIcon: draft.vendorIcon,
+    fromId:     draft.from,
+    fromName:   draft.fromName,
+    toId:       draft.to,
+    toName:     draft.toName,
+    day:        draft.day,
+    dayLabel:   draft.dayLabel,
+    assignee, note,
+    status:    'pending',
+    createdAt: serverTimestamp()
+  });
+  showToast('✅ 任務已建立！');
+  // pop back to home
+  pageStack = ['page-home'];
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active','exit-left'));
+  document.getElementById('page-home').classList.add('active');
+};
+
+// ══════════════════════════════════════════════
+// TASK LIST ON HOME
+// ══════════════════════════════════════════════
+const DAYS_SHORT = ['週日','週一','週二','週三','週四','週五','週六'];
+
+function renderTasksSection() {
+  const sec = document.getElementById('tasks-section');
+  const arr = Object.entries(tasks)
+    .map(([id,t])=>({id,...t}))
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if (!arr.length) { sec.innerHTML = ''; return; }
+
+  const pending  = arr.filter(t=>t.status==='pending');
+  const ongoing  = arr.filter(t=>t.status==='ongoing');
+  const done     = arr.filter(t=>t.status==='done');
+  const ordered  = [...pending,...ongoing,...done];
+
+  sec.innerHTML = `<div class="section-hd">最近任務</div>` +
+    ordered.map(t => `
+    <div class="task-item">
+      <div class="task-dot ${t.status==='pending'?'td-pending':t.status==='ongoing'?'td-ongoing':'td-done'}"></div>
+      <div class="task-body">
+        <div class="task-route-row">
+          <span>${t.vendorIcon||'🛒'}</span>
+          <span class="t-market">${esc(t.fromName)}</span>
+          <span class="t-arrow">→</span>
+          <span class="t-market">${esc(t.toName)}</span>
+        </div>
+        <div class="task-meta-row">
+          <span>${esc(t.vendorName)}</span>
+          ${t.dayLabel?`<span>📅 ${esc(t.dayLabel)}</span>`:''}
+          ${t.assignee?`<span>👤 ${esc(t.assignee)}</span>`:''}
+        </div>
+        ${t.note?`<div style="font-size:11px;color:var(--muted);margin-top:3px">📝 ${esc(t.note)}</div>`:''}
+        <div class="task-status-row">
+          ${t.status!=='ongoing'?`<button class="ts-btn go" onclick="setTaskStatus('${t.id}','ongoing')">進行中</button>`:''}
+          ${t.status!=='done'   ?`<button class="ts-btn ok" onclick="setTaskStatus('${t.id}','done')">✓ 完成</button>`:''}
+          ${t.status!=='pending'?`<button class="ts-btn" onclick="setTaskStatus('${t.id}','pending')">↩ 重開</button>`:''}
+          <button class="ts-btn del" onclick="delTask('${t.id}')">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+window.setTaskStatus = (id,s) => update(ref(db,'tasks/'+id),{status:s});
+window.delTask = id => { if(confirm('確定刪除？')) remove(ref(db,'tasks/'+id)); };
+
+// ══════════════════════════════════════════════
+// VENDOR MODAL
+// ══════════════════════════════════════════════
+const EMOJIS = ['🛒','🍢','🌮','🍜','🧆','🍱','🥩','🌽','🍤','🧋','🥤','🍡','🍘','🧇','🍣','🍛','🥪','🫕','🍧','🎪','🚗','🚚','🛻','📦'];
+
+function buildEmojiPicker(pickerId, initial) {
+  selectedEmoji = initial || EMOJIS[0];
+  const el = document.getElementById(pickerId);
+  el.innerHTML = EMOJIS.map(e => `
+    <div class="emoji-opt ${e===selectedEmoji?'selected':''}" onclick="pickEmoji('${pickerId}','${e}')">${e}</div>
+  `).join('');
+}
+
+window.pickEmoji = function(pickerId, e) {
+  if (pickerId === 'emoji-picker') selectedEmoji = e;
+  else selectedMarketEmoji = e;
+  document.querySelectorAll(`#${pickerId} .emoji-opt`).forEach(el => {
+    el.classList.toggle('selected', el.textContent === e);
+  });
+};
+
+window.openAddVendor = function() {
+  editingVendorId = null;
+  document.getElementById('vendor-modal-title').textContent = '新增攤商';
+  document.getElementById('vm-name').value = '';
+  document.getElementById('vm-note').value = '';
+  buildEmojiPicker('emoji-picker', '🛒');
+  document.getElementById('vendor-modal-actions').innerHTML = `
+    <button class="modal-btn cancel" onclick="closeVendorModal()">取消</button>
+    <button class="modal-btn save" onclick="saveVendor()">儲存</button>
+  `;
+  document.getElementById('vendor-modal').classList.add('open');
+};
+
+window.openEditVendor = function(id) {
+  const v = vendors[id]; if (!v) return;
+  editingVendorId = id;
+  document.getElementById('vendor-modal-title').textContent = '編輯攤商';
+  document.getElementById('vm-name').value = v.name;
+  document.getElementById('vm-note').value = v.note||'';
+  buildEmojiPicker('emoji-picker', v.icon||'🛒');
+  document.getElementById('vendor-modal-actions').innerHTML = `
+    <button class="modal-btn delete" onclick="deleteVendor('${id}')">刪除</button>
+    <button class="modal-btn cancel" onclick="closeVendorModal()">取消</button>
+    <button class="modal-btn save" onclick="saveVendor()">儲存</button>
+  `;
+  document.getElementById('vendor-modal').classList.add('open');
+};
+
+window.closeVendorModal = function(e) {
+  if (e && e.target !== document.getElementById('vendor-modal')) return;
+  document.getElementById('vendor-modal').classList.remove('open');
+};
+
+window.saveVendor = async function() {
+  const name = document.getElementById('vm-name').value.trim();
+  const note = document.getElementById('vm-note').value.trim();
+  if (!name) { alert('請輸入攤商名稱'); return; }
+  const data = { name, icon: selectedEmoji, note };
+  if (editingVendorId) await update(ref(db,'vendors/'+editingVendorId), data);
+  else await push(vendorsRef, data);
+  document.getElementById('vendor-modal').classList.remove('open');
+  showToast(editingVendorId ? '✏️ 攤商已更新' : '✅ 攤商已新增');
+};
+
+window.deleteVendor = async function(id) {
+  if (!confirm('確定刪除這個攤商？')) return;
+  await remove(ref(db,'vendors/'+id));
+  document.getElementById('vendor-modal').classList.remove('open');
+  showToast('🗑 攤商已刪除');
+};
+
+// ══════════════════════════════════════════════
+// MARKET MANAGEMENT
+// ══════════════════════════════════════════════
+window.openManageMarkets = function() {
+  pageStack.push('page-markets');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active','exit-left'));
+  document.getElementById('page-markets').classList.add('active');
+  // Actually navigate properly
+  pageStack.pop();
+  navigate('page-markets');
+};
+
+function renderMarketsManage() {
+  const el  = document.getElementById('markets-manage-list');
+  const arr = Object.entries(markets).map(([id,m])=>({id,...m}));
+  if (!arr.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">還沒有夜市<br>點右上角新增</div>`;
+    return;
+  }
+  el.innerHTML = arr.map(m => `
+    <div class="mkt-manage-item">
+      <div class="mkt-manage-icon">${m.icon||'🌙'}</div>
+      <div class="mkt-manage-name">${esc(m.name)}</div>
+      <button class="mkt-del-btn" onclick="deleteMarket('${m.id}')">刪除</button>
+    </div>
+  `).join('');
+}
+
+window.deleteMarket = async function(id) {
+  if (!confirm('確定刪除這個夜市？')) return;
+  await remove(ref(db,'markets/'+id));
+  showToast('🗑 夜市已刪除');
+};
+
+const MARKET_EMOJIS = ['🌙','🏮','🎪','🎡','🌟','🍜','🔥','🎉','🛖','🏙️','🌃','✨'];
+
+window.openAddMarket = function() {
+  selectedMarketEmoji = MARKET_EMOJIS[0];
+  document.getElementById('mm-name').value = '';
+  buildMarketEmojiPicker();
+  document.getElementById('market-modal').classList.add('open');
+};
+
+function buildMarketEmojiPicker() {
+  const el = document.getElementById('market-emoji-picker');
+  el.innerHTML = MARKET_EMOJIS.map(e => `
+    <div class="emoji-opt ${e===selectedMarketEmoji?'selected':''}" onclick="pickEmoji('market-emoji-picker','${e}')">${e}</div>
+  `).join('');
+}
+
+window.closeMarketModal = function(e) {
+  if (e && e.target !== document.getElementById('market-modal')) return;
+  document.getElementById('market-modal').classList.remove('open');
+};
+
+window.saveMarket = async function() {
+  const name = document.getElementById('mm-name').value.trim();
+  if (!name) { alert('請輸入夜市名稱'); return; }
+  await push(marketsRef, { name, icon: selectedMarketEmoji });
+  document.getElementById('market-modal').classList.remove('open');
+  showToast('✅ 夜市已新增');
+};
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// expose globals for inline onclick
+window.openManageMarkets = window.openManageMarkets;
+window.openAddVendor = window.openAddVendor;
+</script>
+</body>
+</html>
