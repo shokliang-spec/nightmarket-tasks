@@ -908,14 +908,16 @@ function renderTasksSection() {
     <div class="task-item">
       <div class="task-dot ${t.status==='pending'?'td-pending':t.status==='ongoing'?'td-ongoing':'td-done'}"></div>
       <div class="task-body">
-        <div class="task-route-row">
+        <div style="font-size:17px;font-weight:900;margin-bottom:6px;display:flex;align-items:center;gap:6px">
           <span>${t.vendorIcon||'🛒'}</span>
+          <span>${esc(t.vendorName)}</span>
+        </div>
+        <div class="task-route-row">
           <span class="t-market">${esc(t.fromName)}</span>
           <span class="t-arrow">→</span>
           <span class="t-market">${esc(t.toName)}</span>
         </div>
         <div class="task-meta-row">
-          <span>${esc(t.vendorName)}</span>
           ${t.dayLabel?`<span>📅 ${esc(t.dayLabel)}</span>`:''}
           ${t.assignee?`<span>👤 ${esc(t.assignee)}</span>`:''}
         </div>
