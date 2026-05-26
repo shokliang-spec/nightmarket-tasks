@@ -510,25 +510,30 @@ window.setActiveDate = function(d) {
 
 // ── Long press ──
 const lpTimers = {};
+let wasLongPress = false;
 window.vcTouchStart = function(e, id) {
+  wasLongPress = false;
   lpTimers[id] = setTimeout(() => {
-    lpTimers[id] = null;
+    wasLongPress = true;
+    clearTimeout(lpTimers[id]);
+    delete lpTimers[id];
     document.querySelector(`[data-vendor-id="${id}"]`)?.classList.add('long-pressing');
     openEditVendor(id);
   }, 600);
 };
 window.vcTouchEnd = function(e, id) {
-  if (lpTimers[id]) { clearTimeout(lpTimers[id]); lpTimers[id] = null; }
+  if (lpTimers[id]) { clearTimeout(lpTimers[id]); delete lpTimers[id]; }
   document.querySelector(`[data-vendor-id="${id}"]`)?.classList.remove('long-pressing');
 };
 window.vcTouchCancel = function(id) {
-  if (lpTimers[id]) { clearTimeout(lpTimers[id]); lpTimers[id] = null; }
+  if (lpTimers[id]) { clearTimeout(lpTimers[id]); delete lpTimers[id]; }
+  wasLongPress = false;
   document.querySelector(`[data-vendor-id="${id}"]`)?.classList.remove('long-pressing');
 };
 
 // ── CHECK IN / UNDO ──
 window.vcClick = async function(id) {
-  if (lpTimers[id] === null) return; // was long press
+  if (wasLongPress) { wasLongPress = false; return; } // was long press, skip click
   const existing = Object.entries(checkins).find(([,c]) => c.vendorId === id && c.date === activeDate);
 
   if (existing) {
