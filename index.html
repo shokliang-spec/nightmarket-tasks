@@ -525,6 +525,10 @@ function renderGrid() {
       ontouchstart="vcTouchStart(event,'${v.id}')"
       ontouchend="vcTouchEnd(event,'${v.id}')"
       ontouchcancel="vcTouchCancel('${v.id}')"
+      oncontextmenu="vcRightClick(event,'${v.id}')"
+      onmousedown="vcMouseDown(event,'${v.id}')"
+      onmouseup="vcMouseUp('${v.id}')"
+      onmouseleave="vcMouseUp('${v.id}')"
       onclick="vcClick('${v.id}')">
       <div class="done-badge">✓</div>
       ${scheduled && !done ? `<div style="position:absolute;top:8px;left:8px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px var(--accent)"></div>` : ''}
@@ -593,7 +597,30 @@ window.setDowFilter = function(dow, el) {
 
 // ── Long press ──
 const lpTimers = {};
+const mpTimers = {}; // mouse press timers
 let wasLongPress = false;
+
+// Desktop: right-click
+window.vcRightClick = function(e, id) {
+  e.preventDefault();
+  wasLongPress = true;
+  openEditVendor(id);
+};
+
+// Desktop: mouse long-press (hold 600ms)
+window.vcMouseDown = function(e, id) {
+  if (e.button !== 0) return; // left button only
+  mpTimers[id] = setTimeout(() => {
+    wasLongPress = true;
+    delete mpTimers[id];
+    document.querySelector(`[data-vendor-id="${id}"]`)?.classList.add('long-pressing');
+    openEditVendor(id);
+  }, 600);
+};
+window.vcMouseUp = function(id) {
+  if (mpTimers[id]) { clearTimeout(mpTimers[id]); delete mpTimers[id]; }
+  document.querySelector(`[data-vendor-id="${id}"]`)?.classList.remove('long-pressing');
+};
 window.vcTouchStart = function(e, id) {
   wasLongPress = false;
   lpTimers[id] = setTimeout(() => {
