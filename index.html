@@ -228,6 +228,16 @@ main { padding: 16px 16px 120px; }
 @media (min-width: 480px) {
   .vendor-grid { grid-template-columns: repeat(3, 1fr); }
 }
+.weekday-filter { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 10px 20px 0; }
+.weekday-filter::-webkit-scrollbar { display: none; }
+.wf-btn {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+  transition: all 0.15s; white-space: nowrap;
+}
+.wf-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(255,149,0,0.1); }
 .weekday-picker { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .weekday-opt {
   flex: 1; min-width: 36px; padding: 8px 4px;
@@ -279,6 +289,18 @@ main { padding: 16px 16px 120px; }
 
 <!-- ── DATE TABS ── -->
 <div class="date-tabs" id="date-tabs"></div>
+
+<!-- ── WEEKDAY FILTER ── -->
+<div class="weekday-filter" id="weekday-filter">
+  <button class="wf-btn active" data-dow="all" onclick="setDowFilter('all',this)">全部</button>
+  <button class="wf-btn" data-dow="1" onclick="setDowFilter('1',this)">週一</button>
+  <button class="wf-btn" data-dow="2" onclick="setDowFilter('2',this)">週二</button>
+  <button class="wf-btn" data-dow="3" onclick="setDowFilter('3',this)">週三</button>
+  <button class="wf-btn" data-dow="4" onclick="setDowFilter('4',this)">週四</button>
+  <button class="wf-btn" data-dow="5" onclick="setDowFilter('5',this)">週五</button>
+  <button class="wf-btn" data-dow="6" onclick="setDowFilter('6',this)">週六</button>
+  <button class="wf-btn" data-dow="0" onclick="setDowFilter('0',this)">週日</button>
+</div>
 
 <!-- ── MAIN CONTENT ── -->
 <main>
@@ -393,6 +415,7 @@ let vendors   = {};
 let checkins  = {};   // { id: { vendorId, date, time, ts } }
 let settings  = { rate: 100 };
 let activeDate = todayStr();
+let dowFilter  = 'all';
 let lastUndoId = null;
 let toastTimer = null;
 let selectedEmoji = '🛒';
@@ -476,9 +499,22 @@ function renderGrid() {
     return;
   }
 
+  // apply weekday filter
+  const filtered = dowFilter === 'all' ? arr : arr.filter(v =>
+    v.days && v.days.map(String).includes(dowFilter)
+  );
+  const displayArr = filtered.length ? filtered : arr; // fallback if none match
+  if (dowFilter !== 'all' && !filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">📭</div>
+      這天沒有設定出攤的攤商
+    </div>`;
+    return;
+  }
+
   const activeDow = String(new Date(activeDate + 'T00:00:00').getDay());
   // find checkin for each vendor on activeDate
-  grid.innerHTML = arr.map(v => {
+  grid.innerHTML = displayArr.map(v => {
     const checkin = Object.values(checkins).find(c => c.vendorId === v.id && c.date === activeDate);
     const done = !!checkin;
     const scheduled = v.days && v.days.map(String).includes(activeDow);
@@ -535,6 +571,25 @@ window.setActiveDate = function(d) {
   activeDate = d;
   render();
 };
+
+// ── Weekday filter ──
+window.setDowFilter = function(dow, el) {
+  dowFilter = dow;
+  document.querySelectorAll('.wf-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+};
+
+// Auto-highlight today's weekday button on load
+(function() {
+  const todayDow = String(new Date().getDay());
+  const btn = document.querySelector(`.wf-btn[data-dow="${todayDow}"]`);
+  if (btn) {
+    document.querySelectorAll('.wf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    dowFilter = todayDow;
+  }
+})();
 
 // ── Long press ──
 const lpTimers = {};
