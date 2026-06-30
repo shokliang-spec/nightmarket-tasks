@@ -183,9 +183,14 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
   <!-- 費率 -->
   <div class="card">
     <div class="card-title">費率設定</div>
+    <div class="rate-row" style="margin-bottom:10px">
+      <div class="rate-label" style="width:90px;flex-shrink:0">5公里內（含）</div>
+      <input class="rate-input" id="rate-near" type="number" inputmode="numeric" value="100" min="1">
+      <div class="rate-unit">元 / 公里</div>
+    </div>
     <div class="rate-row">
-      <div class="rate-label">每公里</div>
-      <input class="rate-input" id="rate" type="number" inputmode="numeric" value="80" min="1">
+      <div class="rate-label" style="width:90px;flex-shrink:0">超過5公里</div>
+      <input class="rate-input" id="rate-far" type="number" inputmode="numeric" value="80" min="1">
       <div class="rate-unit">元 / 公里</div>
     </div>
   </div>
@@ -277,7 +282,8 @@ function swapLocations() {
 function calculate() {
   const fromId = document.getElementById('sel-from').value;
   const toId   = document.getElementById('sel-to').value;
-  const rate   = parseFloat(document.getElementById('rate').value) || 80;
+  const rateNear = parseFloat(document.getElementById('rate-near').value) || 100;
+  const rateFar  = parseFloat(document.getElementById('rate-far').value) || 80;
 
   if (!fromId || !toId) { alert('請選擇出發和到達地點'); return; }
   if (fromId === toId && fromId !== 'custom') { alert('出發和到達地點相同'); return; }
@@ -299,19 +305,24 @@ function calculate() {
       alert('請在「手動輸入距離」填入公里數');
       return;
     }
-    const price = Math.round(manualKm * rate);
-    showResult(fromName, toName, manualKm, price, rate);
-    addHistory(fromName, toName, manualKm, price, rate);
+    const price = calcPrice(manualKm, rateNear, rateFar);
+    showResult(fromName, toName, manualKm, price, rateNear, rateFar);
+    addHistory(fromName, toName, manualKm, price, rateNear, rateFar);
     return;
   }
 
   const km    = roadDist(fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng);
-  const price = Math.round(km * rate);
-  showResult(fromName, toName, km, price, rate);
-  addHistory(fromName, toName, km, price, rate);
+  const price = calcPrice(km, rateNear, rateFar);
+  showResult(fromName, toName, km, price, rateNear, rateFar);
+  addHistory(fromName, toName, km, price, rateNear, rateFar);
 }
 
-function showResult(from, to, km, price, rate) {
+function calcPrice(km, rateNear, rateFar) {
+  if (km <= 5) return Math.round(km * rateNear);
+  return Math.round(km * rateFar);
+}
+
+function showResult(from, to, km, price, rateNear, rateFar) {
   const box = document.getElementById('result-box');
   if (km === null) {
     box.className = 'result-box';
@@ -333,14 +344,17 @@ function showResult(from, to, km, price, rate) {
     </div>
     <div class="result-km">${km.toFixed(1)}<span>公里</span></div>
     <div class="result-price">$${price.toLocaleString()}</div>
-    <div class="result-sub">約 ${km.toFixed(1)} 公里 × $${rate}/公里（含道路彎繞估算）</div>`;
+    <div class="result-sub">${km <= 5
+      ? `約 ${km.toFixed(1)} 公里 × $${rateNear}/公里（5公里內）`
+      : `約 ${km.toFixed(1)} 公里 × $${rateFar}/公里（超過5公里）`
+    }（含道路彎繞估算）</div>`;
 }
 
 // ── History ──
 let history = JSON.parse(localStorage.getItem('nm_calc_history') || '[]');
 
-function addHistory(from, to, km, price, rate) {
-  history.unshift({ from, to, km: km.toFixed(1), price, rate, ts: Date.now() });
+function addHistory(from, to, km, price, rateNear, rateFar) {
+  history.unshift({ from, to, km: km.toFixed(1), price, rateNear, rateFar, ts: Date.now() });
   if (history.length > 20) history = history.slice(0, 20);
   localStorage.setItem('nm_calc_history', JSON.stringify(history));
   renderHistory();
@@ -370,9 +384,10 @@ function loadHistory(i) {
   const toLoc   = LOCATIONS.find(l => l.name === h.to);
   if (fromLoc) document.getElementById('sel-from').value = fromLoc.id;
   if (toLoc)   document.getElementById('sel-to').value   = toLoc.id;
-  document.getElementById('rate').value = h.rate;
+  document.getElementById('rate-near').value = h.rateNear || 100;
+  document.getElementById('rate-far').value  = h.rateFar  || 80;
   onFromChange(); onToChange();
-  showResult(h.from, h.to, parseFloat(h.km), h.price, h.rate);
+  showResult(h.from, h.to, parseFloat(h.km), h.price, h.rateNear || 100, h.rateFar || 80);
 }
 
 renderHistory();
