@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>夜市攤車運送估價表</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Zen+Dots&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #111010; --surface: #1c1b1a; --surface2: #252422; --border: #333230;
+  --accent: #ff9500; --green: #34c759; --blue: #3d8eff; --red: #ff3b30;
+  --text: #f2ede4; --muted: #7a7670;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; padding-bottom: 40px; }
+
+header {
+  background: rgba(17,16,16,0.97); border-bottom: 1px solid var(--border);
+  padding: 16px 20px 14px; position: sticky; top: 0; z-index: 10;
+}
+.app-title { font-family: 'Zen Dots', monospace; font-size: 18px; color: var(--accent); margin-bottom: 2px; }
+.app-sub { font-size: 12px; color: var(--muted); }
+
+main { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 18px; margin-bottom: 14px;
+}
+.card-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 14px;
+}
+
+/* location selector */
+.loc-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.loc-label { font-size: 12px; color: var(--muted); width: 30px; flex-shrink: 0; }
+.loc-select {
+  flex: 1; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text); padding: 11px 14px;
+  font-size: 15px; font-weight: 700; font-family: 'Noto Sans TC', sans-serif;
+  outline: none; cursor: pointer; transition: border-color 0.15s;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
+  padding-right: 36px;
+}
+.loc-select:focus { border-color: var(--accent); }
+.loc-select option { background: #1c1b1a; }
+.swap-btn {
+  width: 100%; padding: 9px; border-radius: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted); font-size: 13px; cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 4px;
+}
+.swap-btn:active { background: var(--border); }
+
+/* rate */
+.rate-row { display: flex; align-items: center; gap: 10px; }
+.rate-label { font-size: 13px; color: var(--muted); }
+.rate-input {
+  width: 90px; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--accent); padding: 9px 12px;
+  font-size: 16px; font-weight: 700; font-family: 'Zen Dots', monospace;
+  outline: none; transition: border-color 0.15s; text-align: center;
+}
+.rate-input:focus { border-color: var(--accent); }
+.rate-unit { font-size: 13px; color: var(--muted); }
+
+/* result */
+.result-box {
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 20px; text-align: center;
+  transition: border-color 0.3s;
+}
+.result-box.has-result { border-color: var(--accent); }
+.result-route {
+  font-size: 14px; color: var(--muted); margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+}
+.result-market {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 3px 10px; font-weight: 700; color: var(--text);
+}
+.result-arrow { color: var(--accent); font-size: 18px; }
+.result-km {
+  font-family: 'Zen Dots', monospace; font-size: 36px; font-weight: 700;
+  color: var(--text); margin-bottom: 4px;
+}
+.result-km span { font-size: 16px; color: var(--muted); margin-left: 2px; }
+.result-price {
+  font-family: 'Zen Dots', monospace; font-size: 28px; font-weight: 700;
+  color: var(--accent); margin-bottom: 4px;
+}
+.result-sub { font-size: 12px; color: var(--muted); }
+.result-empty { color: var(--muted); font-size: 14px; padding: 10px 0; }
+
+/* custom location */
+.custom-input {
+  width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text); padding: 11px 14px;
+  font-size: 14px; font-family: 'Noto Sans TC', sans-serif;
+  outline: none; transition: border-color 0.15s; margin-top: 8px;
+}
+.custom-input:focus { border-color: var(--blue); }
+
+/* history */
+.history-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px; cursor: pointer; transition: background 0.1s;
+}
+.history-item:last-child { border-bottom: none; }
+.history-item:active { opacity: 0.7; }
+.hi-route { flex: 1; font-weight: 700; }
+.hi-km { font-family: 'Zen Dots', monospace; font-size: 12px; color: var(--muted); }
+.hi-price { font-family: 'Zen Dots', monospace; font-size: 13px; color: var(--accent); }
+.no-history { color: var(--muted); font-size: 13px; text-align: center; padding: 10px 0; }
+
+.calc-btn {
+  width: 100%; padding: 15px; border-radius: 14px;
+  background: var(--accent); color: #111;
+  border: none; font-size: 16px; font-weight: 900;
+  cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+  transition: all 0.15s; margin-top: 4px;
+}
+.calc-btn:active { background: #e88a00; transform: scale(0.98); }
+
+.clear-btn {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 12px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+  padding: 4px; float: right;
+}
+.clear-btn:active { color: var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <div class="app-title">🛒 夜市攤車運送估價表</div>
+  <div class="app-sub">計算路程與推攤費用</div>
+</header>
+
+<main>
+  <!-- 出發 / 到達 -->
+  <div class="card">
+    <div class="card-title">選擇地點</div>
+    <div class="loc-row">
+      <div class="loc-label">出發</div>
+      <select class="loc-select" id="sel-from" onchange="onFromChange()">
+        <option value="">-- 選擇地點 --</option>
+      </select>
+    </div>
+    <div id="from-custom-wrap" style="display:none">
+      <input class="custom-input" id="from-custom" type="text" placeholder="輸入地點名稱（僅供顯示）">
+    </div>
+
+    <button class="swap-btn" onclick="swapLocations()">⇅ 交換出發 / 到達</button>
+
+    <div class="loc-row" style="margin-top:10px">
+      <div class="loc-label">到達</div>
+      <select class="loc-select" id="sel-to" onchange="onToChange()">
+        <option value="">-- 選擇地點 --</option>
+      </select>
+    </div>
+    <div id="to-custom-wrap" style="display:none">
+      <input class="custom-input" id="to-custom" type="text" placeholder="輸入地點名稱（僅供顯示）">
+    </div>
+  </div>
+
+  <!-- 手動輸入公里數（自訂地點時顯示）-->
+  <div class="card" id="manual-km-card" style="display:none">
+    <div class="card-title">手動輸入距離</div>
+    <div class="rate-row">
+      <div class="rate-label">實際距離</div>
+      <input class="rate-input" id="manual-km" type="number" inputmode="decimal" step="0.1" min="0" placeholder="0.0">
+      <div class="rate-unit">公里</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">填入 Google Maps 查到的實際路程</div>
+  </div>
+
+  <!-- 費率 -->
+  <div class="card">
+    <div class="card-title">費率設定</div>
+    <div class="rate-row">
+      <div class="rate-label">每公里</div>
+      <input class="rate-input" id="rate" type="number" inputmode="numeric" value="80" min="1">
+      <div class="rate-unit">元 / 公里</div>
+    </div>
+  </div>
+
+  <button class="calc-btn" onclick="calculate()">計算費用</button>
+
+  <!-- 結果 -->
+  <div class="card" style="margin-top:14px">
+    <div class="card-title">計算結果</div>
+    <div class="result-box" id="result-box">
+      <div class="result-empty">選擇出發和到達地點後按計算</div>
+    </div>
+  </div>
+
+  <!-- 歷史紀錄 -->
+  <div class="card">
+    <div class="card-title">
+      最近計算
+      <button class="clear-btn" onclick="clearHistory()">清除</button>
+    </div>
+    <div id="history-list"><div class="no-history">還沒有紀錄</div></div>
+  </div>
+</main>
+
+<script>
+// ── 夜市座標（WGS84）──
+const LOCATIONS = [
+  { id: 'huayuan',   name: '花園夜市',     lat: 22.9991, lng: 120.1951 },
+  { id: 'wusheng',   name: '武聖夜市',     lat: 22.9895, lng: 120.1979 },
+  { id: 'xiaobei',   name: '小北成功夜市', lat: 22.9983, lng: 120.2013 },
+  { id: 'yongda',    name: '永大夜市',     lat: 22.9724, lng: 120.2547 },
+  { id: 'xinyonghua',name: '新永華夜市',  lat: 22.9876, lng: 120.1647 },
+  { id: 'longpu',    name: '龍埔夜市',     lat: 22.9643, lng: 120.2398 },
+  { id: 'dadong',    name: '大東東夜市',   lat: 22.9896, lng: 120.2246 },
+  { id: 'custom',    name: '自訂地點…',   lat: null,    lng: null     },
+];
+
+// ── Haversine 距離 (公里) ──
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── 道路距離估算（直線 × 1.35 係數）──
+function roadDist(lat1, lng1, lat2, lng2) {
+  return haversine(lat1, lng1, lat2, lng2) * 1.35;
+}
+
+// ── Build selects ──
+function buildSelect(id) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = '<option value="">-- 選擇地點 --</option>' +
+    LOCATIONS.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+}
+buildSelect('sel-from');
+buildSelect('sel-to');
+
+function onFromChange() {
+  document.getElementById('from-custom-wrap').style.display =
+    document.getElementById('sel-from').value === 'custom' ? 'block' : 'none';
+  toggleManualKm();
+}
+function onToChange() {
+  document.getElementById('to-custom-wrap').style.display =
+    document.getElementById('sel-to').value === 'custom' ? 'block' : 'none';
+  toggleManualKm();
+}
+function toggleManualKm() {
+  const hasCustom = document.getElementById('sel-from').value === 'custom' ||
+                    document.getElementById('sel-to').value === 'custom';
+  document.getElementById('manual-km-card').style.display = hasCustom ? 'block' : 'none';
+}
+
+function swapLocations() {
+  const sf = document.getElementById('sel-from');
+  const st = document.getElementById('sel-to');
+  const cf = document.getElementById('from-custom').value;
+  const ct = document.getElementById('to-custom').value;
+  [sf.value, st.value] = [st.value, sf.value];
+  document.getElementById('from-custom').value = ct;
+  document.getElementById('to-custom').value   = cf;
+  onFromChange(); onToChange();
+}
+
+// ── Calculate ──
+function calculate() {
+  const fromId = document.getElementById('sel-from').value;
+  const toId   = document.getElementById('sel-to').value;
+  const rate   = parseFloat(document.getElementById('rate').value) || 80;
+
+  if (!fromId || !toId) { alert('請選擇出發和到達地點'); return; }
+  if (fromId === toId && fromId !== 'custom') { alert('出發和到達地點相同'); return; }
+
+  const fromLoc = LOCATIONS.find(l => l.id === fromId);
+  const toLoc   = LOCATIONS.find(l => l.id === toId);
+
+  let fromName = fromId === 'custom' ? (document.getElementById('from-custom').value || '自訂地點') : fromLoc.name;
+  let toName   = toId   === 'custom' ? (document.getElementById('to-custom').value   || '自訂地點') : toLoc.name;
+
+  if (fromId === 'custom' || toId === 'custom') {
+    const manualKm = parseFloat(document.getElementById('manual-km').value);
+    if (!manualKm || manualKm <= 0) {
+      // show the card and focus
+      document.getElementById('manual-km-card').style.display = 'block';
+      document.getElementById('manual-km').focus();
+      document.getElementById('manual-km').style.borderColor = 'var(--red)';
+      setTimeout(() => document.getElementById('manual-km').style.borderColor = '', 1500);
+      alert('請在「手動輸入距離」填入公里數');
+      return;
+    }
+    const price = Math.round(manualKm * rate);
+    showResult(fromName, toName, manualKm, price, rate);
+    addHistory(fromName, toName, manualKm, price, rate);
+    return;
+  }
+
+  const km    = roadDist(fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng);
+  const price = Math.round(km * rate);
+  showResult(fromName, toName, km, price, rate);
+  addHistory(fromName, toName, km, price, rate);
+}
+
+function showResult(from, to, km, price, rate) {
+  const box = document.getElementById('result-box');
+  if (km === null) {
+    box.className = 'result-box';
+    box.innerHTML = `
+      <div class="result-route">
+        <span class="result-market">${from}</span>
+        <span class="result-arrow">→</span>
+        <span class="result-market">${to}</span>
+      </div>
+      <div style="color:var(--muted);font-size:13px;padding:8px 0">自訂地點無法自動計算距離<br>請手動輸入或選擇夜市</div>`;
+    return;
+  }
+  box.className = 'result-box has-result';
+  box.innerHTML = `
+    <div class="result-route">
+      <span class="result-market">${from}</span>
+      <span class="result-arrow">→</span>
+      <span class="result-market">${to}</span>
+    </div>
+    <div class="result-km">${km.toFixed(1)}<span>公里</span></div>
+    <div class="result-price">$${price.toLocaleString()}</div>
+    <div class="result-sub">約 ${km.toFixed(1)} 公里 × $${rate}/公里（含道路彎繞估算）</div>`;
+}
+
+// ── History ──
+let history = JSON.parse(localStorage.getItem('nm_calc_history') || '[]');
+
+function addHistory(from, to, km, price, rate) {
+  history.unshift({ from, to, km: km.toFixed(1), price, rate, ts: Date.now() });
+  if (history.length > 20) history = history.slice(0, 20);
+  localStorage.setItem('nm_calc_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function clearHistory() {
+  if (!confirm('確定清除所有紀錄？')) return;
+  history = [];
+  localStorage.setItem('nm_calc_history', '[]');
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (!history.length) { el.innerHTML = '<div class="no-history">還沒有紀錄</div>'; return; }
+  el.innerHTML = history.map((h, i) => `
+    <div class="history-item" onclick="loadHistory(${i})">
+      <div class="hi-route">${h.from} → ${h.to}</div>
+      <div class="hi-km">${h.km}km</div>
+      <div class="hi-price">$${Number(h.price).toLocaleString()}</div>
+    </div>`).join('');
+}
+
+function loadHistory(i) {
+  const h = history[i];
+  const fromLoc = LOCATIONS.find(l => l.name === h.from);
+  const toLoc   = LOCATIONS.find(l => l.name === h.to);
+  if (fromLoc) document.getElementById('sel-from').value = fromLoc.id;
+  if (toLoc)   document.getElementById('sel-to').value   = toLoc.id;
+  document.getElementById('rate').value = h.rate;
+  onFromChange(); onToChange();
+  showResult(h.from, h.to, parseFloat(h.km), h.price, h.rate);
+}
+
+renderHistory();
+</script>
+</body>
+</html>
