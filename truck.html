@@ -234,7 +234,7 @@ main { padding: 14px 14px 100px; max-width: 700px; margin: 0 auto; }
   </div>
   <div class="odo-next-service">
     <div class="next-label">下次保養</div>
-    <div class="next-value none" id="next-service-val">未設定</div>
+    <div id="next-service-val"><span style="color:var(--muted);font-size:13px">未設定</span></div>
   </div>
 </div>
 
@@ -386,20 +386,33 @@ function updateOdo() {
   if (maxOdo) odoEl.innerHTML = `${maxOdo.toLocaleString()}<span class="odo-unit"> km</span>`;
   else odoEl.innerHTML = `——<span class="odo-unit"> km</span>`;
 
-  // next service
-  const services = Object.values(records).filter(r=>r.type==='service'&&r.nextOdo);
+  // next service – check both date and km
+  const services = Object.values(records).filter(r=>r.type==='service'&&(r.nextOdo||r.nextDate));
   const nextEl = document.getElementById('next-service-val');
   if (!services.length) {
-    nextEl.textContent = '未設定'; nextEl.className = 'next-value none';
+    nextEl.innerHTML = '<span style="color:var(--muted);font-size:13px">未設定</span>';
   } else {
-    const latest = services.sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
-    const next   = Number(latest.nextOdo);
-    const diff   = maxOdo ? next - maxOdo : null;
-    nextEl.textContent = `${next.toLocaleString()} km`;
-    if (diff !== null) {
-      nextEl.className = diff <= 500 ? 'next-value near' : 'next-value ok';
-      if (diff <= 500) nextEl.textContent += ` (還剩 ${diff} km)`;
-    } else { nextEl.className = 'next-value ok'; }
+    const latest   = services.sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
+    const today    = new Date(); today.setHours(0,0,0,0);
+    let lines = [];
+    // km warning
+    if (latest.nextOdo) {
+      const next = Number(latest.nextOdo);
+      const diff = maxOdo ? next - maxOdo : null;
+      const kmColor = (diff !== null && diff <= 500) ? 'var(--red)' : 'var(--green)';
+      const kmExtra = (diff !== null && diff <= 500) ? ` <span style="font-size:10px">(剩${diff}km)</span>` : '';
+      lines.push(`<div style="font-family:'Zen Dots',monospace;font-size:14px;color:${kmColor}">${next.toLocaleString()} km${kmExtra}</div>`);
+    }
+    // date warning
+    if (latest.nextDate) {
+      const nd   = new Date(latest.nextDate + 'T00:00:00');
+      const days = Math.round((nd - today) / 86400000);
+      const dateColor = days <= 14 ? 'var(--red)' : 'var(--green)';
+      const mo   = nd.getMonth()+1; const d = nd.getDate();
+      const dateExtra = days <= 14 ? ` <span style="font-size:10px">(剩${days}天)</span>` : '';
+      lines.push(`<div style="font-family:'Zen Dots',monospace;font-size:14px;color:${dateColor}">${mo}/${d}${dateExtra}</div>`);
+    }
+    nextEl.innerHTML = lines.join('') || '<span style="color:var(--muted);font-size:13px">未設定</span>';
   }
 }
 
@@ -456,6 +469,7 @@ function renderMain() {
       title = r.item || '保養';
       if (r.odometer) meta.push(`📍 ${Number(r.odometer).toLocaleString()} km`);
       if (r.nextOdo)  meta.push(`🔔 下次 ${Number(r.nextOdo).toLocaleString()} km`);
+      if (r.nextDate) { const nd=new Date(r.nextDate+'T00:00:00'); meta.push(`📅 下次 ${nd.getMonth()+1}/${nd.getDate()}`); }
     } else {
       title = r.item || '費用';
     }
@@ -532,7 +546,8 @@ window.openRecordModal = function() {
     fields += `<div class="field"><label>保養項目</label><input id="rf-item" type="text" placeholder="例：機油更換、輪胎"></div>
     <div class="field-row">
       <div class="field"><label>金額 (元)</label><input id="rf-amount" type="number" inputmode="numeric" placeholder="例：2000"></div>
-      <div class="field"><label>下次保養里程</label><input id="rf-next-odo" type="number" inputmode="numeric" placeholder="例：8000"></div>
+      <div class="field"><label>下次保養里程 (km)</label><input id="rf-next-odo" type="number" inputmode="numeric" placeholder="例：8000"></div>
+      <div class="field"><label>下次保養日期</label><input id="rf-next-date" type="date"></div>
     </div>`;
   } else {
     fields += `<div class="field"><label>費用項目</label><input id="rf-item" type="text" placeholder="例：停車費、過路費"></div>
@@ -559,8 +574,9 @@ window.saveRecord = async function() {
     data.liters = document.getElementById('rf-liters')?.value || '';
     if (!data.liters && !amount) { alert('請填寫加油量或金額'); return; }
   } else if (activeTab === 'service') {
-    data.item    = document.getElementById('rf-item')?.value.trim() || '';
-    data.nextOdo = document.getElementById('rf-next-odo')?.value || '';
+    data.item     = document.getElementById('rf-item')?.value.trim() || '';
+    data.nextOdo  = document.getElementById('rf-next-odo')?.value || '';
+    data.nextDate = document.getElementById('rf-next-date')?.value || '';
     if (!data.item) { alert('請填寫保養項目'); return; }
   } else {
     data.item = document.getElementById('rf-item')?.value.trim() || '';
