@@ -232,6 +232,11 @@ main { padding: 14px 14px 100px; max-width: 700px; margin: 0 auto; }
     <div class="odo-label">目前里程</div>
     <div class="odo-value" id="odo-val">——<span class="odo-unit">km</span></div>
   </div>
+  <div style="text-align:center">
+    <div class="odo-label">平均油耗</div>
+    <div id="odo-efficiency" style="font-family:'Zen Dots',monospace;font-size:20px;color:var(--blue)">——</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:1px">km/L</div>
+  </div>
   <div class="odo-next-service">
     <div class="next-label">下次保養</div>
     <div id="next-service-val"><span style="color:var(--muted);font-size:13px">未設定</span></div>
@@ -382,9 +387,23 @@ window.deleteUser = async function(id) {
 function updateOdo() {
   const arr = Object.values(records).filter(r => r.odometer);
   const maxOdo = arr.length ? Math.max(...arr.map(r=>Number(r.odometer)||0)) : null;
+  const minOdo = arr.length ? Math.min(...arr.map(r=>Number(r.odometer)||0)) : null;
   const odoEl = document.getElementById('odo-val');
   if (maxOdo) odoEl.innerHTML = `${maxOdo.toLocaleString()}<span class="odo-unit"> km</span>`;
   else odoEl.innerHTML = `——<span class="odo-unit"> km</span>`;
+
+  // fuel efficiency: total km driven / total liters
+  const fuelRecs = Object.values(records).filter(r => r.type==='fuel' && r.liters && r.odometer);
+  const effEl = document.getElementById('odo-efficiency');
+  if (fuelRecs.length >= 2) {
+    const sorted = fuelRecs.sort((a,b)=>Number(a.odometer)-Number(b.odometer));
+    const kmDriven  = Number(sorted[sorted.length-1].odometer) - Number(sorted[0].odometer);
+    // exclude first fill-up (unknown starting point), sum rest
+    const totalLiters = sorted.slice(1).reduce((s,r)=>s+(Number(r.liters)||0), 0);
+    if (totalLiters > 0 && kmDriven > 0) {
+      effEl.textContent = (kmDriven / totalLiters).toFixed(1);
+    } else { effEl.textContent = '——'; }
+  } else { effEl.textContent = '——'; }
 
   // next service – check both date and km
   const services = Object.values(records).filter(r=>r.type==='service'&&(r.nextOdo||r.nextDate));
