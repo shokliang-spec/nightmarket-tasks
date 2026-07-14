@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>貨車紀錄本</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Zen+Dots&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d0d;
+  --surface: #181818;
+  --surface2: #202020;
+  --border: #2e2e2e;
+  --accent: #e8c84a;   /* amber – fuel gauge yellow */
+  --blue: #4a9eff;
+  --green: #3dba6f;
+  --red: #ff4444;
+  --orange: #ff8c3a;
+  --text: #f0ede4;
+  --muted: #6e6e6e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; }
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px 12px;
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 12px;
+}
+.app-icon { font-size: 24px; }
+.app-title { font-family: 'Zen Dots', monospace; font-size: 16px; color: var(--accent); flex: 1; }
+.conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.conn-dot.on { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.user-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 12px; cursor: pointer;
+  font-size: 12px; font-weight: 700; transition: border-color 0.15s;
+}
+.user-pill:active { border-color: var(--accent); }
+.user-avatar { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #111; }
+
+/* ── ODOMETER BANNER ── */
+.odo-banner {
+  background: linear-gradient(135deg, #1a1700 0%, #111 60%);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 16px;
+}
+.odo-main { flex: 1; }
+.odo-label { font-size: 10px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; }
+.odo-value { font-family: 'Zen Dots', monospace; font-size: 28px; color: var(--accent); letter-spacing: 0.05em; }
+.odo-unit { font-size: 13px; color: var(--muted); margin-left: 3px; }
+.odo-next-service {
+  text-align: right;
+}
+.next-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
+.next-value { font-family: 'Zen Dots', monospace; font-size: 16px; }
+.next-value.near { color: var(--red); }
+.next-value.ok   { color: var(--green); }
+.next-value.none { color: var(--muted); font-size: 13px; }
+
+/* ── TABS ── */
+.tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+  background: var(--surface); position: sticky; top: 57px; z-index: 40;
+}
+.tab {
+  flex: 1; padding: 12px 6px; text-align: center;
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all 0.15s; letter-spacing: 0.03em;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.tab .tab-icon { font-size: 18px; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── MAIN ── */
+main { padding: 14px 14px 100px; max-width: 700px; margin: 0 auto; }
+
+/* ── ADD BTN ── */
+.add-btn {
+  width: 100%; padding: 14px; border-radius: 12px;
+  background: var(--accent); color: #111;
+  border: none; font-size: 15px; font-weight: 900;
+  cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+  transition: all 0.15s; margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.add-btn:active { transform: scale(0.98); background: #d4b43a; }
+
+/* ── STATS ROW ── */
+.stats-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.stat-card {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px;
+}
+.stat-val { font-family: 'Zen Dots', monospace; font-size: 18px; color: var(--accent); }
+.stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.05em; }
+
+/* ── RECORD LIST ── */
+.record-list { display: flex; flex-direction: column; gap: 8px; }
+.record-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+  display: flex; gap: 12px; align-items: flex-start;
+  animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+.record-type-dot {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.dot-fuel    { background: rgba(232,200,74,0.12); }
+.dot-service { background: rgba(74,158,255,0.12); }
+.dot-expense { background: rgba(255,140,58,0.12); }
+.record-body { flex: 1; min-width: 0; }
+.record-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.record-meta { font-size: 11px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.record-amount { font-family: 'Zen Dots', monospace; font-size: 15px; color: var(--accent); margin-top: 2px; }
+.record-user { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.record-del {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 16px; cursor: pointer; padding: 2px 4px; flex-shrink: 0;
+  transition: color 0.15s;
+}
+.record-del:active { color: var(--red); }
+.empty-state {
+  text-align: center; padding: 48px 20px; color: var(--muted); font-size: 14px;
+}
+.empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  width: 100%; background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  max-height: 92dvh; overflow-y: auto;
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; letter-spacing: 0.05em; }
+.field input, .field select, .field textarea {
+  width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text); padding: 11px 13px;
+  font-size: 14px; font-family: 'Noto Sans TC', sans-serif;
+  outline: none; transition: border-color 0.15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+.field select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236e6e6e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 34px; }
+.field select option { background: #181818; }
+.field textarea { resize: none; height: 70px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.modal-btn {
+  flex: 1; padding: 13px; border-radius: 12px; font-size: 14px; font-weight: 700;
+  cursor: pointer; border: none; font-family: 'Noto Sans TC', sans-serif; transition: all 0.15s;
+}
+.btn-save   { background: var(--accent); color: #111; }
+.btn-cancel { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── USER SELECT MODAL ── */
+.user-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.user-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: all 0.15s;
+}
+.user-item:active, .user-item.selected { border-color: var(--accent); background: rgba(232,200,74,0.06); }
+.user-av { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; color: #111; flex-shrink: 0; }
+.user-name { font-size: 14px; font-weight: 700; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 18px; font-size: 13px;
+  z-index: 800; opacity: 0; transition: all 0.25s; white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── LOADING ── */
+.loading-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 999;
+}
+.spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (min-width: 500px) { .field-row { grid-template-columns: 1fr 1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loading-screen">
+  <div class="spinner"></div>
+  <div style="color:var(--muted);font-size:13px">載入中…</div>
+</div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="app-icon">🚚</div>
+  <div class="app-title">貨車紀錄本</div>
+  <div class="conn-dot" id="conn-dot"></div>
+  <div class="user-pill" id="user-pill" onclick="openUserModal()">
+    <div class="user-avatar" id="user-avatar">?</div>
+    <span id="user-name-label">選擇使用者</span>
+  </div>
+</header>
+
+<!-- ── ODOMETER BANNER ── -->
+<div class="odo-banner">
+  <div class="odo-main">
+    <div class="odo-label">目前里程</div>
+    <div class="odo-value" id="odo-val">——<span class="odo-unit">km</span></div>
+  </div>
+  <div class="odo-next-service">
+    <div class="next-label">下次保養</div>
+    <div class="next-value none" id="next-service-val">未設定</div>
+  </div>
+</div>
+
+<!-- ── TABS ── -->
+<div class="tabs">
+  <div class="tab active" data-tab="fuel" onclick="switchTab('fuel',this)">
+    <span class="tab-icon">⛽</span>加油
+  </div>
+  <div class="tab" data-tab="service" onclick="switchTab('service',this)">
+    <span class="tab-icon">🔧</span>保養
+  </div>
+  <div class="tab" data-tab="expense" onclick="switchTab('expense',this)">
+    <span class="tab-icon">💸</span>其他費用
+  </div>
+  <div class="tab" data-tab="users" onclick="switchTab('users',this)">
+    <span class="tab-icon">👤</span>使用者
+  </div>
+</div>
+
+<main id="main-content"></main>
+
+<!-- ── MODAL: ADD RECORD ── -->
+<div class="modal-overlay" id="record-modal" onclick="closeRecordModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="record-modal-title">新增紀錄</div>
+    <div id="record-modal-fields"></div>
+    <div class="modal-actions">
+      <button class="modal-btn btn-cancel" onclick="closeRecordModal()">取消</button>
+      <button class="modal-btn btn-save" onclick="saveRecord()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: USER SELECT ── -->
+<div class="modal-overlay" id="user-modal" onclick="closeUserModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">選擇使用者</div>
+    <div class="user-list" id="user-list-modal"></div>
+    <div class="field">
+      <label>新增使用者名稱</label>
+      <div style="display:flex;gap:8px">
+        <input id="new-user-input" type="text" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none" placeholder="例：小明">
+        <button onclick="addUser()" style="padding:11px 16px;background:var(--accent);color:#111;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">新增</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn btn-cancel" onclick="closeUserModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, push, update, remove, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDoT4cAuLGTC9ZAP3uG-0tRNRDsAD-l1-4",
+  authDomain: "nightmarket-tasks.firebaseapp.com",
+  databaseURL: "https://nightmarket-tasks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nightmarket-tasks",
+  storageBucket: "nightmarket-tasks.firebasestorage.app",
+  messagingSenderId: "241280209238",
+  appId: "1:241280209238:web:325be906e04a95987986f7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+const recordsRef = ref(db, 'truck_records');
+const usersRef   = ref(db, 'truck_users');
+
+let records  = {};
+let users    = {};
+let activeTab = 'fuel';
+let currentUser = JSON.parse(localStorage.getItem('truck_user') || 'null');
+let toastTimer  = null;
+
+// ── Connection ──
+onValue(ref(db, '.info/connected'), s => {
+  document.getElementById('conn-dot').className = 'conn-dot' + (s.val() ? ' on' : '');
+});
+
+// ── Data ──
+let loaded = 0;
+function checkLoaded() { if (++loaded >= 2) document.getElementById('loading-screen').style.display = 'none'; }
+onValue(recordsRef, s => { records = s.val() || {}; renderMain(); updateOdo(); checkLoaded(); });
+onValue(usersRef,   s => { users   = s.val() || {}; renderUserList(); checkLoaded(); });
+
+// ── User ──
+function updateUserPill() {
+  if (currentUser) {
+    document.getElementById('user-name-label').textContent = currentUser.name;
+    document.getElementById('user-avatar').textContent = currentUser.name.slice(0,1);
+  } else {
+    document.getElementById('user-name-label').textContent = '選擇使用者';
+    document.getElementById('user-avatar').textContent = '?';
+  }
+}
+updateUserPill();
+
+function renderUserList() {
+  const el  = document.getElementById('user-list-modal');
+  const arr = Object.entries(users).map(([id,u])=>({id,...u}));
+  if (!arr.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">還沒有使用者，請在下方新增</div>'; return; }
+  el.innerHTML = arr.map(u => `
+    <div class="user-item ${currentUser?.id===u.id?'selected':''}" onclick="selectUser('${u.id}','${u.name}')">
+      <div class="user-av">${u.name.slice(0,1)}</div>
+      <div class="user-name">${esc(u.name)}</div>
+      <button onclick="event.stopPropagation();deleteUser('${u.id}')" style="margin-left:auto;background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px">✕</button>
+    </div>`).join('');
+}
+
+window.selectUser = function(id, name) {
+  currentUser = { id, name };
+  localStorage.setItem('truck_user', JSON.stringify(currentUser));
+  updateUserPill();
+  renderUserList();
+  closeUserModal();
+  showToast(`👤 ${name}`);
+};
+
+window.addUser = async function() {
+  const name = document.getElementById('new-user-input').value.trim();
+  if (!name) return;
+  await push(usersRef, { name });
+  document.getElementById('new-user-input').value = '';
+  showToast('✅ 使用者已新增');
+};
+
+window.deleteUser = async function(id) {
+  if (!confirm('確定刪除此使用者？')) return;
+  await remove(ref(db,'truck_users/'+id));
+  if (currentUser?.id === id) {
+    currentUser = null;
+    localStorage.removeItem('truck_user');
+    updateUserPill();
+  }
+};
+
+// ── ODO ──
+function updateOdo() {
+  const arr = Object.values(records).filter(r => r.odometer);
+  const maxOdo = arr.length ? Math.max(...arr.map(r=>Number(r.odometer)||0)) : null;
+  const odoEl = document.getElementById('odo-val');
+  if (maxOdo) odoEl.innerHTML = `${maxOdo.toLocaleString()}<span class="odo-unit"> km</span>`;
+  else odoEl.innerHTML = `——<span class="odo-unit"> km</span>`;
+
+  // next service
+  const services = Object.values(records).filter(r=>r.type==='service'&&r.nextOdo);
+  const nextEl = document.getElementById('next-service-val');
+  if (!services.length) {
+    nextEl.textContent = '未設定'; nextEl.className = 'next-value none';
+  } else {
+    const latest = services.sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
+    const next   = Number(latest.nextOdo);
+    const diff   = maxOdo ? next - maxOdo : null;
+    nextEl.textContent = `${next.toLocaleString()} km`;
+    if (diff !== null) {
+      nextEl.className = diff <= 500 ? 'next-value near' : 'next-value ok';
+      if (diff <= 500) nextEl.textContent += ` (還剩 ${diff} km)`;
+    } else { nextEl.className = 'next-value ok'; }
+  }
+}
+
+// ── TABS ──
+window.switchTab = function(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderMain();
+};
+
+// ── RENDER ──
+function renderMain() {
+  const main = document.getElementById('main-content');
+  if (activeTab === 'users') { renderUsersTab(main); return; }
+
+  const typeMap = { fuel:'⛽ 加油', service:'🔧 保養', expense:'💸 其他費用' };
+  const arr = Object.entries(records)
+    .map(([id,r])=>({id,...r}))
+    .filter(r => r.type === activeTab)
+    .sort((a,b)=>(b.ts||0)-(a.ts||0));
+
+  // stats
+  const totalAmt = arr.reduce((s,r)=>s+(Number(r.amount)||0),0);
+  const statsHtml = activeTab === 'fuel' ? `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val">${arr.length}</div><div class="stat-lbl">加油次數</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">$${totalAmt.toLocaleString()}</div><div class="stat-lbl">總油費</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">${arr.reduce((s,r)=>s+(Number(r.liters)||0),0).toFixed(1)}</div><div class="stat-lbl">總公升</div>
+      </div>
+    </div>` : `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val">${arr.length}</div><div class="stat-lbl">紀錄筆數</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val">$${totalAmt.toLocaleString()}</div><div class="stat-lbl">總費用</div>
+      </div>
+    </div>`;
+
+  const listHtml = arr.length ? arr.map(r => {
+    const dotClass = { fuel:'dot-fuel', service:'dot-service', expense:'dot-expense' }[r.type];
+    const icon     = { fuel:'⛽', service:'🔧', expense:'💸' }[r.type];
+    let title = '', meta = [];
+    if (r.type==='fuel') {
+      title = `加油 ${r.liters||'?'} 公升`;
+      if (r.odometer) meta.push(`📍 ${Number(r.odometer).toLocaleString()} km`);
+    } else if (r.type==='service') {
+      title = r.item || '保養';
+      if (r.odometer) meta.push(`📍 ${Number(r.odometer).toLocaleString()} km`);
+      if (r.nextOdo)  meta.push(`🔔 下次 ${Number(r.nextOdo).toLocaleString()} km`);
+    } else {
+      title = r.item || '費用';
+    }
+    if (r.note)  meta.push(`📝 ${r.note}`);
+    if (r.date)  meta.push(r.date);
+    return `
+    <div class="record-card">
+      <div class="record-type-dot ${dotClass}">${icon}</div>
+      <div class="record-body">
+        <div class="record-title">${esc(title)}</div>
+        <div class="record-meta">${meta.map(m=>`<span>${esc(m)}</span>`).join('')}</div>
+        ${r.amount ? `<div class="record-amount">$${Number(r.amount).toLocaleString()}</div>` : ''}
+        <div class="record-user">👤 ${esc(r.userName||'未知')}</div>
+      </div>
+      <button class="record-del" onclick="delRecord('${r.id}')">✕</button>
+    </div>`;
+  }).join('') : `<div class="empty-state"><div class="empty-icon">${{fuel:'⛽',service:'🔧',expense:'💸'}[activeTab]}</div>還沒有${typeMap[activeTab]}紀錄</div>`;
+
+  const btnLabel = { fuel:'＋ 新增加油紀錄', service:'＋ 新增保養紀錄', expense:'＋ 新增費用紀錄' }[activeTab];
+  main.innerHTML = `
+    <button class="add-btn" onclick="openRecordModal()">${btnLabel}</button>
+    ${statsHtml}
+    <div class="record-list">${listHtml}</div>`;
+}
+
+function renderUsersTab(main) {
+  const arr = Object.entries(users).map(([id,u])=>({id,...u}));
+  main.innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px">使用者管理</div>
+      <div class="record-list">
+        ${arr.length ? arr.map(u=>`
+          <div class="record-card">
+            <div class="record-type-dot" style="background:rgba(232,200,74,0.1);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:var(--accent)">${u.name.slice(0,1)}</div>
+            <div class="record-body"><div class="record-title">${esc(u.name)}</div></div>
+            <button class="record-del" onclick="deleteUser('${u.id}')">✕</button>
+          </div>`).join('') : '<div class="empty-state"><div class="empty-icon">👤</div>還沒有使用者</div>'}
+      </div>
+    </div>
+    <div class="field">
+      <label>新增使用者</label>
+      <div style="display:flex;gap:8px">
+        <input id="new-user-tab" type="text" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none" placeholder="輸入姓名">
+        <button onclick="addUserTab()" style="padding:11px 18px;background:var(--accent);color:#111;border:none;border-radius:10px;font-size:15px;font-weight:900;cursor:pointer">新增</button>
+      </div>
+    </div>`;
+}
+window.addUserTab = async function() {
+  const name = document.getElementById('new-user-tab').value.trim();
+  if (!name) return;
+  await push(usersRef, { name });
+  document.getElementById('new-user-tab').value = '';
+  showToast('✅ 使用者已新增');
+};
+
+// ── RECORD MODAL ──
+window.openRecordModal = function() {
+  if (!currentUser) { alert('請先選擇使用者！'); openUserModal(); return; }
+  const today = new Date().toISOString().slice(0,10);
+  const titles = { fuel:'⛽ 新增加油紀錄', service:'🔧 新增保養紀錄', expense:'💸 新增費用紀錄' };
+  document.getElementById('record-modal-title').textContent = titles[activeTab];
+
+  let fields = `<div class="field-row">
+    <div class="field"><label>日期</label><input id="rf-date" type="date" value="${today}"></div>
+    <div class="field"><label>里程 (km)</label><input id="rf-odo" type="number" inputmode="numeric" placeholder="例：2795"></div>
+  </div>`;
+
+  if (activeTab === 'fuel') {
+    fields += `<div class="field-row">
+      <div class="field"><label>加油量 (公升)</label><input id="rf-liters" type="number" inputmode="decimal" step="0.1" placeholder="例：30.5"></div>
+      <div class="field"><label>金額 (元)</label><input id="rf-amount" type="number" inputmode="numeric" placeholder="例：1500"></div>
+    </div>`;
+  } else if (activeTab === 'service') {
+    fields += `<div class="field"><label>保養項目</label><input id="rf-item" type="text" placeholder="例：機油更換、輪胎"></div>
+    <div class="field-row">
+      <div class="field"><label>金額 (元)</label><input id="rf-amount" type="number" inputmode="numeric" placeholder="例：2000"></div>
+      <div class="field"><label>下次保養里程</label><input id="rf-next-odo" type="number" inputmode="numeric" placeholder="例：8000"></div>
+    </div>`;
+  } else {
+    fields += `<div class="field"><label>費用項目</label><input id="rf-item" type="text" placeholder="例：停車費、過路費"></div>
+    <div class="field"><label>金額 (元)</label><input id="rf-amount" type="number" inputmode="numeric" placeholder="例：100"></div>`;
+  }
+  fields += `<div class="field"><label>備註（可留空）</label><textarea id="rf-note" placeholder="備註說明…"></textarea></div>`;
+  document.getElementById('record-modal-fields').innerHTML = fields;
+  document.getElementById('record-modal').classList.add('open');
+};
+
+window.closeRecordModal = function(e) {
+  if (e && e.target !== document.getElementById('record-modal')) return;
+  document.getElementById('record-modal').classList.remove('open');
+};
+
+window.saveRecord = async function() {
+  const date   = document.getElementById('rf-date')?.value || '';
+  const odo    = document.getElementById('rf-odo')?.value || '';
+  const amount = document.getElementById('rf-amount')?.value || '';
+  const note   = document.getElementById('rf-note')?.value.trim() || '';
+  const data   = { type: activeTab, date, odometer: odo, amount, note, userName: currentUser.name, userId: currentUser.id, ts: Date.now() };
+
+  if (activeTab === 'fuel') {
+    data.liters = document.getElementById('rf-liters')?.value || '';
+    if (!data.liters && !amount) { alert('請填寫加油量或金額'); return; }
+  } else if (activeTab === 'service') {
+    data.item    = document.getElementById('rf-item')?.value.trim() || '';
+    data.nextOdo = document.getElementById('rf-next-odo')?.value || '';
+    if (!data.item) { alert('請填寫保養項目'); return; }
+  } else {
+    data.item = document.getElementById('rf-item')?.value.trim() || '';
+    if (!data.item) { alert('請填寫費用項目'); return; }
+  }
+
+  await push(recordsRef, data);
+  document.getElementById('record-modal').classList.remove('open');
+  showToast('✅ 紀錄已儲存');
+};
+
+window.delRecord = async function(id) {
+  if (!confirm('確定刪除這筆紀錄？')) return;
+  await remove(ref(db, 'truck_records/' + id));
+  showToast('🗑 已刪除');
+};
+
+// ── USER MODAL ──
+window.openUserModal = function() { document.getElementById('user-modal').classList.add('open'); };
+window.closeUserModal = function(e) {
+  if (e && e.target !== document.getElementById('user-modal')) return;
+  document.getElementById('user-modal').classList.remove('open');
+};
+
+// ── TOAST ──
+function showToast(msg) {
+  clearTimeout(toastTimer);
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
