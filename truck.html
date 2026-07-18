@@ -233,9 +233,9 @@ main { padding: 14px 14px 100px; max-width: 700px; margin: 0 auto; }
     <div class="odo-value" id="odo-val">——<span class="odo-unit">km</span></div>
   </div>
   <div style="text-align:center">
-    <div class="odo-label">平均油耗</div>
+    <div class="odo-label">每公里油費</div>
     <div id="odo-efficiency" style="font-family:'Zen Dots',monospace;font-size:20px;color:var(--blue)">——</div>
-    <div style="font-size:10px;color:var(--muted);margin-top:1px">km/L</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:1px">元/km</div>
   </div>
   <div class="odo-next-service">
     <div class="next-label">下次保養</div>
@@ -392,18 +392,17 @@ function updateOdo() {
   if (maxOdo) odoEl.innerHTML = `${maxOdo.toLocaleString()}<span class="odo-unit"> km</span>`;
   else odoEl.innerHTML = `——<span class="odo-unit"> km</span>`;
 
-  // fuel efficiency: total km driven / total liters
-  const fuelRecs = Object.values(records).filter(r => r.type==='fuel' && r.liters && r.odometer);
+  // cost per km: total fuel cost / total km driven
+  const fuelRecs = Object.values(records).filter(r => r.type==='fuel' && r.amount && r.odometer);
   const effEl = document.getElementById('odo-efficiency');
   if (fuelRecs.length >= 2) {
-    const sorted = fuelRecs.sort((a,b)=>Number(a.odometer)-Number(b.odometer));
-    const kmDriven  = Number(sorted[sorted.length-1].odometer) - Number(sorted[0].odometer);
-    // exclude first fill-up (unknown starting point), sum rest
-    const totalLiters = sorted.slice(1).reduce((s,r)=>s+(Number(r.liters)||0), 0);
-    if (totalLiters > 0 && kmDriven > 0) {
-      effEl.textContent = (kmDriven / totalLiters).toFixed(1);
+    const sorted     = fuelRecs.sort((a,b)=>Number(a.odometer)-Number(b.odometer));
+    const kmDriven   = Number(sorted[sorted.length-1].odometer) - Number(sorted[0].odometer);
+    const totalCost  = sorted.reduce((s,r)=>s+(Number(r.amount)||0), 0);
+    if (kmDriven > 0 && totalCost > 0) {
+      effEl.textContent = (totalCost / kmDriven).toFixed(1);
     } else { effEl.textContent = '——'; }
-  } else { effEl.textContent = '——'; }
+  } else { effEl.textContent = fuelRecs.length===1?'需2筆以上':'——'; }
 
   // next service – check both date and km
   const services = Object.values(records).filter(r=>r.type==='service'&&(r.nextOdo||r.nextDate));
