@@ -205,6 +205,9 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
     </div>
   </div>
 
+  <!-- 油資成本 badge -->
+  <div id="fuel-cost-badge" style="display:none;background:rgba(61,142,255,0.08);border:1px solid rgba(61,142,255,0.25);border-radius:8px;padding:8px 14px;font-size:12px;color:#4a9eff;margin-bottom:14px;text-align:center"></div>
+
   <!-- 歷史紀錄 -->
   <div class="card">
     <div class="card-title">
@@ -215,7 +218,42 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
   </div>
 </main>
 
-<script>
+<script type="module">
+// ── Firebase: 讀取每公里油費 ──
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDoT4cAuLGTC9ZAP3uG-0tRNRDsAD-l1-4",
+  authDomain: "nightmarket-tasks.firebaseapp.com",
+  databaseURL: "https://nightmarket-tasks-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nightmarket-tasks",
+  storageBucket: "nightmarket-tasks.firebasestorage.app",
+  messagingSenderId: "241280209238",
+  appId: "1:241280209238:web:325be906e04a95987986f7"
+};
+
+let costPerKm = null; // 從 Firebase 讀取的每公里油費
+
+try {
+  const fbApp = initializeApp(firebaseConfig, 'estimate');
+  const db = getDatabase(fbApp);
+  onValue(ref(db, 'truck_records'), snap => {
+    const records = snap.val() || {};
+    const fuelRecs = Object.values(records).filter(r => r.type === 'fuel' && r.amount && r.odometer);
+    if (fuelRecs.length >= 2) {
+      const sorted    = fuelRecs.sort((a,b) => Number(a.odometer) - Number(b.odometer));
+      const kmDriven  = Number(sorted[sorted.length-1].odometer) - Number(sorted[0].odometer);
+      const totalCost = sorted.reduce((s,r) => s + (Number(r.amount)||0), 0);
+      if (kmDriven > 0 && totalCost > 0) {
+        costPerKm = totalCost / kmDriven;
+        document.getElementById('fuel-cost-badge').textContent = `⛽ 每公里油費：$${costPerKm.toFixed(1)}（自動從貨車紀錄讀取）`;
+        document.getElementById('fuel-cost-badge').style.display = 'block';
+      }
+    }
+  });
+} catch(e) { console.log('Firebase init error', e); }
+
 // ── 夜市座標（WGS84）──
 const LOCATIONS = [
   { id: 'huayuan',   name: '花園夜市',     lat: 22.9991, lng: 120.1951 },
@@ -253,12 +291,12 @@ function buildSelect(id) {
 buildSelect('sel-from');
 buildSelect('sel-to');
 
-function onFromChange() {
+window.onFromChange = function() {
   document.getElementById('from-custom-wrap').style.display =
     document.getElementById('sel-from').value === 'custom' ? 'block' : 'none';
   toggleManualKm();
 }
-function onToChange() {
+window.onToChange = function() {
   document.getElementById('to-custom-wrap').style.display =
     document.getElementById('sel-to').value === 'custom' ? 'block' : 'none';
   toggleManualKm();
@@ -269,7 +307,7 @@ function toggleManualKm() {
   document.getElementById('manual-km-card').style.display = hasCustom ? 'block' : 'none';
 }
 
-function swapLocations() {
+window.swapLocations = function() {
   const sf = document.getElementById('sel-from');
   const st = document.getElementById('sel-to');
   const cf = document.getElementById('from-custom').value;
@@ -281,7 +319,7 @@ function swapLocations() {
 }
 
 // ── Calculate ──
-function calculate() {
+window.calculate = function() {
   const fromId = document.getElementById('sel-from').value;
   const toId   = document.getElementById('sel-to').value;
   const rateNear = parseFloat(document.getElementById('rate-near').value) || 100;
@@ -338,6 +376,14 @@ function showResult(from, to, km, price, rateNear, rateFar) {
     return;
   }
   box.className = 'result-box has-result';
+  const fuelCostTotal = costPerKm ? Math.round(costPerKm * km) : null;
+  const fuelRow = fuelCostTotal !== null
+    ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">⛽ 油資成本參考（$${costPerKm.toFixed(1)}/km）</div>
+        <div style="font-family:'Zen Dots',monospace;font-size:20px;color:var(--blue)">$${fuelCostTotal.toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">推攤費 $${price.toLocaleString()} 中，油資約佔 ${Math.round(fuelCostTotal/price*100)}%</div>
+      </div>`
+    : `<div style="margin-top:10px;font-size:11px;color:var(--muted)">⛽ 油資成本：貨車紀錄不足，無法計算</div>`;
   box.innerHTML = `
     <div class="result-route">
       <span class="result-market">${from}</span>
@@ -349,7 +395,8 @@ function showResult(from, to, km, price, rateNear, rateFar) {
     <div class="result-sub">${km <= 5
       ? `約 ${km.toFixed(1)} 公里 × $${rateNear}/公里（5公里內）`
       : `約 ${km.toFixed(1)} 公里 × $${rateFar}/公里（超過5公里）`
-    }（含道路彎繞估算）</div>`;
+    }（含道路彎繞估算）</div>
+    ${fuelRow}`;
 }
 
 // ── History ──
@@ -362,7 +409,7 @@ function addHistory(from, to, km, price, rateNear, rateFar) {
   renderHistory();
 }
 
-function clearHistory() {
+window.clearHistory = function() {
   if (!confirm('確定清除所有紀錄？')) return;
   history = [];
   localStorage.setItem('nm_calc_history', '[]');
@@ -380,7 +427,7 @@ function renderHistory() {
     </div>`).join('');
 }
 
-function loadHistory(i) {
+window.loadHistory = function(i) {
   const h = history[i];
   const fromLoc = LOCATIONS.find(l => l.name === h.from);
   const toLoc   = LOCATIONS.find(l => l.name === h.to);
