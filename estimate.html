@@ -234,10 +234,19 @@ const firebaseConfig = {
 };
 
 let costPerKm = null; // 從 Firebase 讀取的每公里油費
+let fbMarkets = []; // 從 Firebase 讀取的夜市清單
 
 try {
   const fbApp = initializeApp(firebaseConfig, 'estimate');
   const db = getDatabase(fbApp);
+
+  // 讀夜市清單
+  onValue(ref(db, 'markets'), snap => {
+    const data = snap.val() || {};
+    fbMarkets = Object.values(data).map(m => m.name).filter(Boolean).sort();
+    rebuildSelects(); // 重建下拉選單
+  });
+
   onValue(ref(db, 'truck_records'), snap => {
     const records = snap.val() || {};
     const fuelRecs = Object.values(records).filter(r => r.type === 'fuel' && r.amount && r.odometer);
@@ -283,11 +292,26 @@ function roadDist(lat1, lng1, lat2, lng2) {
 }
 
 // ── Build selects ──
+// LOCATIONS 保留夜市座標（用於計算距離）
+// 下拉選單優先用 Firebase 夜市名稱，找不到座標的用自訂地點距離計算
 function buildSelect(id) {
   const sel = document.getElementById(id);
+  // 合併 Firebase 夜市 + 固定座標夜市（去重）
+  const names = fbMarkets.length ? fbMarkets : LOCATIONS.filter(l=>l.id!=='custom').map(l=>l.name);
+  const uniqueNames = [...new Set(names)];
   sel.innerHTML = '<option value="">-- 選擇地點 --</option>' +
-    LOCATIONS.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+    uniqueNames.map(name => {
+      const loc = LOCATIONS.find(l => l.name === name);
+      return `<option value="${loc ? loc.id : 'fb_'+name}" data-name="${name}">${name}</option>`;
+    }).join('') +
+    '<option value="custom">自訂地點…</option>';
 }
+
+function rebuildSelects() {
+  buildSelect('sel-from');
+  buildSelect('sel-to');
+}
+
 buildSelect('sel-from');
 buildSelect('sel-to');
 
@@ -331,14 +355,20 @@ window.calculate = function() {
   const fromLoc = LOCATIONS.find(l => l.id === fromId);
   const toLoc   = LOCATIONS.find(l => l.id === toId);
 
-  let fromName = fromId === 'custom' ? (document.getElementById('from-custom').value || '自訂地點') : fromLoc.name;
-  let toName   = toId   === 'custom' ? (document.getElementById('to-custom').value   || '自訂地點') : toLoc.name;
+  // Get display name (support fb_ prefixed IDs from Firebase-only markets)
+  const getNameFromSel = (selId, customId, customInputId) => {
+    if (selId === 'custom') return document.getElementById(customInputId).value || '自訂地點';
+    if (selId.startsWith('fb_')) return selId.slice(3); // Firebase market name
+    return LOCATIONS.find(l=>l.id===selId)?.name || selId;
+  };
+  let fromName = getNameFromSel(fromId, 'custom', 'from-custom');
+  let toName   = getNameFromSel(toId,   'custom', 'to-custom');
 
-  if (fromId === 'custom' || toId === 'custom') {
+  // If either side has no coords (Firebase-only market or custom), show manual input
+  if (fromId === 'custom' || toId === 'custom' || fromId.startsWith('fb_') || toId.startsWith('fb_')) {
+    document.getElementById('manual-km-card').style.display = 'block';
     const manualKm = parseFloat(document.getElementById('manual-km').value);
     if (!manualKm || manualKm <= 0) {
-      // show the card and focus
-      document.getElementById('manual-km-card').style.display = 'block';
       document.getElementById('manual-km').focus();
       document.getElementById('manual-km').style.borderColor = 'var(--red)';
       setTimeout(() => document.getElementById('manual-km').style.borderColor = '', 1500);
