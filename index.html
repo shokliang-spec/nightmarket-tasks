@@ -265,6 +265,7 @@ main { padding: 16px 16px 120px; }
     <div class="app-title">🛒 攤車打卡</div>
     <div class="header-right">
       <div class="conn-dot" id="conn-dot"></div>
+      <div class="icon-btn" onclick="openReport()" title="週報表">📊</div>
       <div class="icon-btn" onclick="openSettings()" title="設定">⚙️</div>
       <div class="icon-btn" onclick="openAddVendor()" title="新增攤商">＋</div>
     </div>
@@ -381,6 +382,71 @@ main { padding: 16px 16px 120px; }
       <button class="modal-btn cancel" onclick="closeSettingsModal()">關閉</button>
       <button class="modal-btn save" onclick="saveSettings()">儲存</button>
     </div>
+  </div>
+</div>
+
+<!-- ── MODAL: CHECKIN ── -->
+<div class="modal-overlay" id="checkin-modal" onclick="closeCheckinModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="ci-title">確認運送</div>
+    <!-- vendor info -->
+    <div style="display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px">
+      <div id="ci-icon" style="font-size:36px;font-weight:900;line-height:1"></div>
+      <div>
+        <div id="ci-name" style="font-size:16px;font-weight:700"></div>
+        <div id="ci-fee-hint" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+    </div>
+    <!-- A → B -->
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;margin-bottom:14px">
+      <div class="modal-field" style="margin-bottom:0">
+        <label class="input-label">出發地點（A）</label>
+        <input class="input-field" id="ci-from" list="ci-markets-list" placeholder="選或自填夜市">
+      </div>
+      <div style="font-size:20px;color:var(--accent);padding-bottom:10px;text-align:center">→</div>
+      <div class="modal-field" style="margin-bottom:0">
+        <label class="input-label">到達地點（B）</label>
+        <input class="input-field" id="ci-to" list="ci-markets-list" placeholder="選或自填夜市">
+      </div>
+    </div>
+    <datalist id="ci-markets-list"></datalist>
+    <!-- fee -->
+    <div class="modal-field">
+      <label class="input-label">運送金額（元）</label>
+      <input class="input-field" id="ci-fee" type="number" inputmode="numeric" placeholder="100">
+    </div>
+    <!-- note -->
+    <div class="modal-field">
+      <label class="input-label">備註（可留空）</label>
+      <input class="input-field" id="ci-note" type="text" placeholder="例：格位B12">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeCheckinModal()">取消</button>
+      <button class="modal-btn save" id="ci-confirm-btn" onclick="confirmCheckin()" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">確認路線</button>
+    </div>
+    <!-- confirm step -->
+    <div id="ci-confirm-step" style="display:none;margin-top:14px;background:rgba(52,199,89,0.08);border:1px solid rgba(52,199,89,0.25);border-radius:12px;padding:14px">
+      <div style="font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px">✓ 路線確認</div>
+      <div id="ci-confirm-summary" style="font-size:14px;margin-bottom:12px"></div>
+      <button class="modal-btn save" onclick="submitCheckin()" style="width:100%;background:var(--green);color:#111">✓ 完成打卡</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: WEEKLY REPORT ── -->
+<div class="modal-overlay" id="report-modal" onclick="closeReportModal(event)">
+  <div class="modal-sheet" style="max-height:92dvh">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="modal-title" style="margin-bottom:0">📊 週報表</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="reportWeekOffset(-1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:16px">‹</button>
+        <span id="report-week-label" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+        <button onclick="reportWeekOffset(1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:16px">›</button>
+      </div>
+    </div>
+    <div id="report-content"></div>
   </div>
 </div>
 
@@ -641,33 +707,176 @@ window.vcTouchCancel = function(id) {
   document.querySelector(`[data-vendor-id="${id}"]`)?.classList.remove('long-pressing');
 };
 
-// ── CHECK IN / UNDO ──
-window.vcClick = async function(id) {
-  if (wasLongPress) { wasLongPress = false; return; } // was long press, skip click
-  const existing = Object.entries(checkins).find(([,c]) => c.vendorId === id && c.date === activeDate);
+// ── CHECK IN MODAL ──
+let checkinVendorId = null;
 
+window.vcClick = function(id) {
+  if (wasLongPress) { wasLongPress = false; return; }
+  const existing = Object.entries(checkins).find(([,c]) => c.vendorId === id && c.date === activeDate);
   if (existing) {
-    // already done → confirm undo
+    // already done → undo
     const [cid] = existing;
     if (confirm(`取消「${vendors[id]?.name}」的打卡紀錄？`)) {
-      await remove(ref(db, 'checkins/' + cid));
+      remove(ref(db, 'checkins/' + cid));
       showToast('已取消打卡', false);
     }
-  } else {
-    // check in
-    const now = new Date();
-    const vData = vendors[id] || {};
-    const result = await push(checkinsRef, {
-      vendorId: id,
-      vendorName: vData.name || '',
-      fee: vData.fee != null ? vData.fee : 100,
-      date: activeDate,
-      ts: now.getTime()
-    });
-    lastUndoId = result.key;
-    showToast(`✓ ${vendors[id]?.name} 打卡完成`, true);
+    return;
   }
+  openCheckinModal(id);
 };
+
+const MARKETS_LIST = ['花園夜市','武聖夜市','小北成功夜市','永大夜市','新永華夜市','龍埔夜市','大東東夜市','新同安夜市','鹽行夜市'];
+
+function openCheckinModal(id) {
+  checkinVendorId = id;
+  const v = vendors[id] || {};
+  document.getElementById('ci-icon').textContent = v.icon || v.name?.slice(0,1) || '🛒';
+  document.getElementById('ci-name').textContent = v.name || '';
+  const lastFee = v.fee != null ? v.fee : 100;
+  document.getElementById('ci-fee-hint').textContent = `上次金額：$${lastFee}`;
+  document.getElementById('ci-fee').value = lastFee;
+  document.getElementById('ci-from').value = '';
+  document.getElementById('ci-to').value   = '';
+  document.getElementById('ci-note').value = '';
+  document.getElementById('ci-confirm-step').style.display = 'none';
+  document.getElementById('ci-confirm-btn').style.background = 'var(--surface2)';
+  document.getElementById('ci-confirm-btn').style.color = 'var(--muted)';
+  // build datalist
+  document.getElementById('ci-markets-list').innerHTML =
+    MARKETS_LIST.map(m => `<option value="${m}">`).join('');
+  document.getElementById('checkin-modal').classList.add('open');
+}
+
+window.closeCheckinModal = function(e) {
+  if (e && e.target !== document.getElementById('checkin-modal')) return;
+  document.getElementById('checkin-modal').classList.remove('open');
+};
+
+window.confirmCheckin = function() {
+  const from = document.getElementById('ci-from').value.trim();
+  const to   = document.getElementById('ci-to').value.trim();
+  const fee  = document.getElementById('ci-fee').value;
+  if (!from || !to) { alert('請填寫出發和到達地點'); return; }
+  if (!fee)         { alert('請填寫運送金額'); return; }
+  const summary = document.getElementById('ci-confirm-summary');
+  summary.innerHTML = `<span style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-weight:700">${from}</span> <span style="color:var(--accent)">→</span> <span style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-weight:700">${to}</span><br><span style="font-family:'Zen Dots',monospace;font-size:18px;color:var(--accent);margin-top:6px;display:block">$${Number(fee).toLocaleString()}</span>`;
+  document.getElementById('ci-confirm-step').style.display = 'block';
+  document.getElementById('ci-confirm-btn').style.background = 'var(--accent)';
+  document.getElementById('ci-confirm-btn').style.color = '#111';
+};
+
+window.submitCheckin = async function() {
+  const id   = checkinVendorId;
+  const from = document.getElementById('ci-from').value.trim();
+  const to   = document.getElementById('ci-to').value.trim();
+  const fee  = Number(document.getElementById('ci-fee').value) || 0;
+  const note = document.getElementById('ci-note').value.trim();
+  const vData = vendors[id] || {};
+  const now   = new Date();
+  const result = await push(checkinsRef, {
+    vendorId: id, vendorName: vData.name || '',
+    from, to, fee, note,
+    date: activeDate, ts: now.getTime()
+  });
+  lastUndoId = result.key;
+  document.getElementById('checkin-modal').classList.remove('open');
+  showToast(`✓ ${vData.name} 打卡完成`, true);
+};
+
+// ── WEEKLY REPORT ──
+let reportOffset = 0; // 0=this week, -1=last week, etc.
+
+function getWeekRange(offset) {
+  const now = new Date();
+  const dow  = now.getDay(); // 0=Sun
+  const mon  = new Date(now); mon.setDate(now.getDate() - ((dow+6)%7) + offset*7); mon.setHours(0,0,0,0);
+  const sun  = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+  return { mon, sun };
+}
+
+function isoDate(d) { return d.toISOString().slice(0,10); }
+
+window.openReport = function() {
+  reportOffset = 0;
+  renderReport();
+  document.getElementById('report-modal').classList.add('open');
+};
+
+window.closeReportModal = function(e) {
+  if (e && e.target !== document.getElementById('report-modal')) return;
+  document.getElementById('report-modal').classList.remove('open');
+};
+
+window.reportWeekOffset = function(dir) {
+  reportOffset += dir;
+  renderReport();
+};
+
+function renderReport() {
+  const { mon, sun } = getWeekRange(reportOffset);
+  const DAYS = ['日','一','二','三','四','五','六'];
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  const label = reportOffset === 0 ? `本週（${fmt(mon)}－${fmt(sun)}）`
+              : reportOffset === -1 ? `上週（${fmt(mon)}－${fmt(sun)}）`
+              : `${fmt(mon)}－${fmt(sun)}`;
+  document.getElementById('report-week-label').textContent = label;
+
+  // collect checkins in range
+  const arr = Object.values(checkins).filter(c => {
+    if (!c.date) return false;
+    const d = new Date(c.date + 'T00:00:00');
+    return d >= mon && d <= sun;
+  }).sort((a,b) => (a.ts||0) - (b.ts||0));
+
+  if (!arr.length) {
+    document.getElementById('report-content').innerHTML =
+      '<div style="text-align:center;padding:32px;color:var(--muted)">這週沒有打卡紀錄</div>';
+    return;
+  }
+
+  // group by date
+  const byDate = {};
+  arr.forEach(c => { if (!byDate[c.date]) byDate[c.date] = []; byDate[c.date].push(c); });
+
+  const totalFee   = arr.reduce((s,c) => s + (Number(c.fee)||0), 0);
+  const totalCount = arr.length;
+
+  let html = `
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+        <div style="font-family:'Zen Dots',monospace;font-size:22px;color:var(--accent)">${totalCount}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">總攤數</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+        <div style="font-family:'Zen Dots',monospace;font-size:22px;color:var(--green)">$${totalFee.toLocaleString()}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">總金額</div>
+      </div>
+    </div>`;
+
+  Object.entries(byDate).sort().forEach(([date, items]) => {
+    const d   = new Date(date + 'T00:00:00');
+    const dayFee = items.reduce((s,c)=>s+(Number(c.fee)||0),0);
+    html += `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between">
+        <span>週${DAYS[d.getDay()]} ${fmt(d)}</span>
+        <span style="color:var(--accent)">$${dayFee.toLocaleString()} / ${items.length}攤</span>
+      </div>
+      ${items.map(c => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+          <div style="font-size:24px;font-weight:900;width:32px;text-align:center;flex-shrink:0">${esc(vendors[c.vendorId]?.icon || c.vendorName?.slice(0,1) || '?')}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700">${esc(c.vendorName)}</div>
+            ${c.from && c.to ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(c.from)} → ${esc(c.to)}</div>` : ''}
+            ${c.note ? `<div style="font-size:11px;color:var(--muted)">📝 ${esc(c.note)}</div>` : ''}
+          </div>
+          <div style="font-family:'Zen Dots',monospace;font-size:14px;color:var(--accent);flex-shrink:0">$${Number(c.fee||0).toLocaleString()}</div>
+        </div>`).join('')}
+    </div>`;
+  });
+
+  document.getElementById('report-content').innerHTML = html;
+}
 
 window.undoCheckin = async function() {
   if (!lastUndoId) return;
