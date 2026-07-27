@@ -497,9 +497,11 @@ const db  = getDatabase(app);
 const vendorsRef  = ref(db, 'vendors');
 const checkinsRef = ref(db, 'checkins');
 const settingsRef = ref(db, 'settings');
+const marketsRef  = ref(db, 'markets');
 
 let vendors   = {};
-let checkins  = {};   // { id: { vendorId, date, time, ts } }
+let checkins  = {};
+let markets   = {};
 let settings  = { rate: 100 };
 let activeDate = todayStr();
 let dowFilter  = 'all';
@@ -533,10 +535,11 @@ onValue(ref(db, '.info/connected'), s => {
 
 // ── Data ──
 let loaded = 0;
-function checkLoaded() { if (++loaded >= 3) document.getElementById('loading-screen').style.display = 'none'; }
+function checkLoaded() { if (++loaded >= 4) document.getElementById('loading-screen').style.display = 'none'; }
 
 onValue(vendorsRef,  s => { vendors  = s.val() || {}; render(); checkLoaded(); });
 onValue(checkinsRef, s => { checkins = s.val() || {}; render(); checkLoaded(); });
+onValue(marketsRef,  s => { markets  = s.val() || {}; checkLoaded(); });
 onValue(settingsRef, s => {
   const v = s.val() || {};
   settings.rate = v.rate || 100;
@@ -746,11 +749,16 @@ window.vcClick = function(id) {
   openCheckinModal(id);
 };
 
-const MARKETS_LIST = ['花園夜市','武聖夜市','小北成功夜市','永大夜市','新永華夜市','龍埔夜市','大東東夜市','新同安夜市','鹽行夜市'];
+// MARKETS_LIST now comes from Firebase markets collection
+function getMarketNames() {
+  const arr = Object.values(markets).map(m => m.name).filter(Boolean).sort();
+  // fallback if Firebase not loaded yet
+  return arr.length ? arr : ['花園夜市','武聖夜市','小北成功夜市','永大夜市','新永華夜市','龍埔夜市','大東東夜市','新同安夜市','鹽行夜市'];
+}
 
 function buildMarketOptions() {
   return '<option value="">選擇夜市</option>' +
-    MARKETS_LIST.map(m => `<option value="${m}">${m}</option>`).join('') +
+    getMarketNames().map(m => `<option value="${m}">${m}</option>`).join('') +
     '<option value="__custom__">自填地點…</option>';
 }
 
