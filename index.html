@@ -399,18 +399,39 @@ main { padding: 16px 16px 120px; }
       </div>
     </div>
     <!-- A → B -->
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;margin-bottom:14px">
-      <div class="modal-field" style="margin-bottom:0">
-        <label class="input-label">出發地點（A）</label>
-        <input class="input-field" id="ci-from" list="ci-markets-list" placeholder="選或自填夜市">
+    <div style="margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <div>
+          <label class="input-label">出發地點（A）</label>
+          <select class="input-field" id="ci-from-sel" onchange="ciFromSelChange()" style="appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px">
+            <option value="">選擇夜市</option>
+          </select>
+        </div>
+        <div style="font-size:20px;color:var(--accent);text-align:center;margin-top:14px">→</div>
+        <div>
+          <label class="input-label">到達地點（B）</label>
+          <select class="input-field" id="ci-to-sel" onchange="ciToSelChange()" style="appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px">
+            <option value="">選擇夜市</option>
+          </select>
+        </div>
       </div>
-      <div style="font-size:20px;color:var(--accent);padding-bottom:10px;text-align:center">→</div>
-      <div class="modal-field" style="margin-bottom:0">
-        <label class="input-label">到達地點（B）</label>
-        <input class="input-field" id="ci-to" list="ci-markets-list" placeholder="選或自填夜市">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+        <div>
+          <label class="input-label">或自填</label>
+          <input class="input-field" id="ci-from" type="text" placeholder="自填地點">
+        </div>
+        <div style="margin-top:14px"></div>
+        <div>
+          <label class="input-label">或自填</label>
+          <input class="input-field" id="ci-to" type="text" placeholder="自填地點">
+        </div>
       </div>
     </div>
-    <datalist id="ci-markets-list"></datalist>
+    <!-- date -->
+    <div class="modal-field">
+      <label class="input-label">日期（預設今天，可補填過去）</label>
+      <input class="input-field" id="ci-date" type="date">
+    </div>
     <!-- fee -->
     <div class="modal-field">
       <label class="input-label">運送金額（元）</label>
@@ -727,6 +748,25 @@ window.vcClick = function(id) {
 
 const MARKETS_LIST = ['花園夜市','武聖夜市','小北成功夜市','永大夜市','新永華夜市','龍埔夜市','大東東夜市','新同安夜市','鹽行夜市'];
 
+function buildMarketOptions() {
+  return '<option value="">選擇夜市</option>' +
+    MARKETS_LIST.map(m => `<option value="${m}">${m}</option>`).join('') +
+    '<option value="__custom__">自填地點…</option>';
+}
+
+window.ciFromSelChange = function() {
+  const val = document.getElementById('ci-from-sel').value;
+  document.getElementById('ci-from').value = val === '__custom__' ? '' : val;
+  document.getElementById('ci-from').style.display = val === '__custom__' ? 'block' : 'none';
+  if (val === '__custom__') document.getElementById('ci-from').focus();
+};
+window.ciToSelChange = function() {
+  const val = document.getElementById('ci-to-sel').value;
+  document.getElementById('ci-to').value = val === '__custom__' ? '' : val;
+  document.getElementById('ci-to').style.display = val === '__custom__' ? 'block' : 'none';
+  if (val === '__custom__') document.getElementById('ci-to').focus();
+};
+
 function openCheckinModal(id) {
   checkinVendorId = id;
   const v = vendors[id] || {};
@@ -734,16 +774,20 @@ function openCheckinModal(id) {
   document.getElementById('ci-name').textContent = v.name || '';
   const lastFee = v.fee != null ? v.fee : 100;
   document.getElementById('ci-fee-hint').textContent = `上次金額：$${lastFee}`;
-  document.getElementById('ci-fee').value = lastFee;
+  document.getElementById('ci-fee').value  = lastFee;
+  document.getElementById('ci-note').value = '';
+  document.getElementById('ci-date').value = activeDate;
+  // reset selects
+  const opts = buildMarketOptions();
+  document.getElementById('ci-from-sel').innerHTML = opts;
+  document.getElementById('ci-to-sel').innerHTML   = opts;
   document.getElementById('ci-from').value = '';
   document.getElementById('ci-to').value   = '';
-  document.getElementById('ci-note').value = '';
+  document.getElementById('ci-from').style.display = 'none';
+  document.getElementById('ci-to').style.display   = 'none';
   document.getElementById('ci-confirm-step').style.display = 'none';
   document.getElementById('ci-confirm-btn').style.background = 'var(--surface2)';
   document.getElementById('ci-confirm-btn').style.color = 'var(--muted)';
-  // build datalist
-  document.getElementById('ci-markets-list').innerHTML =
-    MARKETS_LIST.map(m => `<option value="${m}">`).join('');
   document.getElementById('checkin-modal').classList.add('open');
 }
 
@@ -753,10 +797,12 @@ window.closeCheckinModal = function(e) {
 };
 
 window.confirmCheckin = function() {
-  const from = document.getElementById('ci-from').value.trim();
-  const to   = document.getElementById('ci-to').value.trim();
+  const fromSel = document.getElementById('ci-from-sel').value;
+  const toSel   = document.getElementById('ci-to-sel').value;
+  const from = (fromSel && fromSel !== '__custom__') ? fromSel : document.getElementById('ci-from').value.trim();
+  const to   = (toSel   && toSel   !== '__custom__') ? toSel   : document.getElementById('ci-to').value.trim();
   const fee  = document.getElementById('ci-fee').value;
-  if (!from || !to) { alert('請填寫出發和到達地點'); return; }
+  if (!from || !to) { alert('請選擇或填寫出發和到達地點'); return; }
   if (!fee)         { alert('請填寫運送金額'); return; }
   const summary = document.getElementById('ci-confirm-summary');
   summary.innerHTML = `<span style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-weight:700">${from}</span> <span style="color:var(--accent)">→</span> <span style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-weight:700">${to}</span><br><span style="font-family:'Zen Dots',monospace;font-size:18px;color:var(--accent);margin-top:6px;display:block">$${Number(fee).toLocaleString()}</span>`;
@@ -766,17 +812,20 @@ window.confirmCheckin = function() {
 };
 
 window.submitCheckin = async function() {
-  const id   = checkinVendorId;
-  const from = document.getElementById('ci-from').value.trim();
-  const to   = document.getElementById('ci-to').value.trim();
+  const id  = checkinVendorId;
+  const fromSel = document.getElementById('ci-from-sel').value;
+  const toSel   = document.getElementById('ci-to-sel').value;
+  const from = (fromSel && fromSel !== '__custom__') ? fromSel : document.getElementById('ci-from').value.trim();
+  const to   = (toSel   && toSel   !== '__custom__') ? toSel   : document.getElementById('ci-to').value.trim();
   const fee  = Number(document.getElementById('ci-fee').value) || 0;
   const note = document.getElementById('ci-note').value.trim();
+  const date = document.getElementById('ci-date').value || activeDate;
   const vData = vendors[id] || {};
   const now   = new Date();
   const result = await push(checkinsRef, {
     vendorId: id, vendorName: vData.name || '',
     from, to, fee, note,
-    date: activeDate, ts: now.getTime()
+    date, ts: now.getTime()
   });
   lastUndoId = result.key;
   document.getElementById('checkin-modal').classList.remove('open');
