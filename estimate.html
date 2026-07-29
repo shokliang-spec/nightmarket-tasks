@@ -223,10 +223,11 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
   </div>
 </main>
 
-<script type="module">
-// ── Firebase: 讀取每公里油費 ──
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, push, update, remove, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ── Firebase compat SDK ──
+// initializeApp, getDatabase etc. are now on window.firebase.*
 
 const firebaseConfig = {
   apiKey: "AIzaSyDoT4cAuLGTC9ZAP3uG-0tRNRDsAD-l1-4",
@@ -243,8 +244,9 @@ let costPerKm = null; // 從 Firebase 讀取的每公里油費
 // Firebase init - separate try blocks so one failure doesn't break the other
 let _fbApp, _db;
 try {
-  _fbApp = initializeApp(firebaseConfig, 'estimate');
-  _db    = getDatabase(_fbApp);
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  _fbApp = firebase.app();
+  _db    = firebase.database();
 } catch(e) { console.warn('Firebase init failed', e); }
 
 // Init est_locations (manage locations feature)
@@ -258,7 +260,7 @@ if (_db) {
 
 // Read fuel cost per km
 if (_db) try {
-  onValue(ref(_db, 'truck_records'), snap => {
+  _db.ref('truck_records').on('value', snap => {
     const records = snap.val() || {};
     const fuelRecs = Object.values(records).filter(r => r.type === 'fuel' && r.amount && r.odometer);
     if (fuelRecs.length >= 2) {
@@ -305,32 +307,32 @@ function roadDist(lat1, lng1, lat2, lng2) {
 }
 
 // ── Build selects from estLocations ──
-window.buildSelect = function(id) {
+function buildSelect(id) {
   const sel = document.getElementById(id);
   const sorted = [...estLocations].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
   sel.innerHTML = '<option value="">-- 選擇地點 --</option>' +
     sorted.map(l => `<option value="${l.id}">${l.name}</option>`).join('') +
     '<option value="custom">自訂地點…</option>';
 }
-window.rebuildSelects = function() { buildSelect('sel-from'); buildSelect('sel-to'); }
+function rebuildSelects() { buildSelect('sel-from'); buildSelect('sel-to'); }
 
-window.onFromChange = function() {
+function onFromChange() {
   document.getElementById('from-custom-wrap').style.display =
     document.getElementById('sel-from').value === 'custom' ? 'block' : 'none';
   toggleManualKm();
 }
-window.onToChange = function() {
+function onToChange() {
   document.getElementById('to-custom-wrap').style.display =
     document.getElementById('sel-to').value === 'custom' ? 'block' : 'none';
   toggleManualKm();
 }
-window.toggleManualKm = function() {
+function toggleManualKm() {
   const hasCustom = document.getElementById('sel-from').value === 'custom' ||
                     document.getElementById('sel-to').value === 'custom';
   document.getElementById('manual-km-card').style.display = hasCustom ? 'block' : 'none';
 }
 
-window.swapLocations = function() {
+function swapLocations() {
   const sf = document.getElementById('sel-from');
   const st = document.getElementById('sel-to');
   const cf = document.getElementById('from-custom').value;
@@ -342,7 +344,7 @@ window.swapLocations = function() {
 }
 
 // ── Calculate ──
-window.calculate = function() {
+function calculate() {
   const fromId = document.getElementById('sel-from').value;
   const toId   = document.getElementById('sel-to').value;
   const rateNear = parseFloat(document.getElementById('rate-near').value) || 100;
@@ -433,7 +435,7 @@ function addHistory(from, to, km, price, rateNear, rateFar) {
   renderHistory();
 }
 
-window.clearHistory = function() {
+function clearHistory() {
   if (!confirm('確定清除所有紀錄？')) return;
   history = [];
   localStorage.setItem('nm_calc_history', '[]');
@@ -451,7 +453,7 @@ function renderHistory() {
     </div>`).join('');
 }
 
-window.loadHistory = function(i) {
+function loadHistory(i) {
   const h = history[i];
   const fromLoc = estLocations.find(l => l.name === h.from);
   const toLoc   = estLocations.find(l => l.name === h.to);
@@ -471,14 +473,14 @@ let estLocDb = null;
 let estLocRef = null;
 
 // Init est_locations in Firebase (run once to seed defaults)
-window.initEstLocations = function(db) {
+function initEstLocations(db) {
   estLocDb  = db;
-  estLocRef = ref(db, 'est_locations');
-  onValue(estLocRef, snap => {
+  estLocRef = db.ref('est_locations');
+  estLocRef.on('value', snap => {
     const data = snap.val();
     if (!data) {
       // First time: seed defaults
-      DEFAULT_LOCATIONS.forEach(loc => push(estLocRef, loc));
+      DEFAULT_LOCATIONS.forEach(loc => estLocRef.push(loc));
     } else {
       estLocations = Object.entries(data).map(([id,l])=>({id,...l}));
       rebuildSelects();
@@ -487,13 +489,13 @@ window.initEstLocations = function(db) {
   });
 }
 
-window.showEstToast = function(msg) {
+function showEstToast(msg) {
   const t = document.getElementById('est-toast');
   t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
   setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 2000);
 }
 
-window.openManageLocations = function() {
+function openManageLocations() {
   renderManageList();
   const m = document.getElementById('manage-modal');
   m.style.display = 'flex';
@@ -503,12 +505,12 @@ window.openManageLocations = function() {
       '<div style="background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.3);border-radius:10px;padding:14px;font-size:13px;color:#ff4444;margin-bottom:12px">⚠️ Firebase 未連線，無法儲存地點。<br>請先到 Firebase Console 確認規則已設定為 read/write true 並發布。</div>';
   }
 };
-window.closeManageModal = function(e) {
+function closeManageModal(e) {
   if (e && e.target !== document.getElementById('manage-modal')) return;
   document.getElementById('manage-modal').style.display = 'none';
 };
 
-window.renderManageList = function() {
+function renderManageList() {
   const el  = document.getElementById('manage-list');
   if (!estLocations.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">還沒有地點</div>'; return; }
   const sorted = [...estLocations].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
@@ -523,7 +525,7 @@ window.renderManageList = function() {
     </div>`).join('');
 }
 
-window.parseCoordsInput = function() {
+function parseCoordsInput() {
   const raw = document.getElementById('lm-coords').value.trim();
   const parsed = document.getElementById('lm-coords-parsed');
   // Try to parse "lat, lng" or "lat lng"
@@ -548,7 +550,7 @@ window.parseCoordsInput = function() {
   }
 };
 
-window.openAddLocationModal = function() {
+function openAddLocationModal() {
   editingLocId = null;
   document.getElementById('loc-modal-title').textContent = '新增地點';
   document.getElementById('lm-name').value   = '';
@@ -562,7 +564,7 @@ window.openAddLocationModal = function() {
   document.getElementById('loc-modal').style.display = 'flex';
 };
 
-window.openEditLocation = function(id) {
+function openEditLocation(id) {
   const l = estLocations.find(x=>x.id===id); if (!l) return;
   editingLocId = id;
   document.getElementById('loc-modal-title').textContent = '編輯地點';
@@ -579,12 +581,12 @@ window.openEditLocation = function(id) {
   document.getElementById('loc-modal').style.display = 'flex';
 };
 
-window.closeLocModal = function(e) {
+function closeLocModal(e) {
   if (e && e.target !== document.getElementById('loc-modal')) return;
   document.getElementById('loc-modal').style.display = 'none';
 };
 
-window.saveLocation = async function() {
+async function saveLocation() {
   const name    = document.getElementById('lm-name').value.trim();
   if (!name) { alert('請輸入地點名稱'); return; }
   const lat = parseFloat(document.getElementById('lm-lat').value) || null;
@@ -602,15 +604,15 @@ window.saveLocation = async function() {
     return;
   }
   const data = { name, lat: lat || null, lng: lng || null };
-  if (editingLocId) await update(ref(estLocDb, 'est_locations/'+editingLocId), data);
-  else await push(estLocRef, data);
+  if (editingLocId) await update(estLocDb.ref('est_locations/'+editingLocId), data);
+  else await estLocRef.push(data);
   document.getElementById('loc-modal').style.display = 'none';
   showEstToast(editingLocId ? '✏️ 地點已更新' : '✅ 地點已新增');
 };
 
-window.deleteLocation = async function(id) {
+async function deleteLocation(id) {
   if (!confirm('確定刪除這個地點？')) return;
-  await remove(ref(estLocDb, 'est_locations/'+id));
+  await remove(estLocDb.ref('est_locations/'+id));
   showEstToast('🗑 已刪除');
 };
 
