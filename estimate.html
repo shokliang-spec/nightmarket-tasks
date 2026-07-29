@@ -240,14 +240,25 @@ const firebaseConfig = {
 
 let costPerKm = null; // 從 Firebase 讀取的每公里油費
 
+// Firebase init - separate try blocks so one failure doesn't break the other
+let _fbApp, _db;
 try {
-  const fbApp = initializeApp(firebaseConfig, 'estimate');
-  const db = getDatabase(fbApp);
+  _fbApp = initializeApp(firebaseConfig, 'estimate');
+  _db    = getDatabase(_fbApp);
+} catch(e) { console.warn('Firebase init failed', e); }
 
-  // 讀估價表專用地點（est_locations）
-  initEstLocations(db);
+// Init est_locations (manage locations feature)
+if (_db) {
+  try { initEstLocations(_db); } catch(e) { console.warn('initEstLocations failed', e); }
+} else {
+  // Fallback: load defaults into memory so selects still work
+  estLocations = DEFAULT_LOCATIONS.map((l,i)=>({id:'default_'+i,...l}));
+  rebuildSelects();
+}
 
-  onValue(ref(db, 'truck_records'), snap => {
+// Read fuel cost per km
+if (_db) try {
+  onValue(ref(_db, 'truck_records'), snap => {
     const records = snap.val() || {};
     const fuelRecs = Object.values(records).filter(r => r.type === 'fuel' && r.amount && r.odometer);
     if (fuelRecs.length >= 2) {
@@ -261,7 +272,8 @@ try {
       }
     }
   });
-} catch(e) { console.log('Firebase init error', e); }
+  } catch(e) { console.log('Firebase fuel cost error', e); }
+}
 
 // ── 預設夜市座標（第一次使用時寫入 Firebase）──
 const DEFAULT_LOCATIONS = [
