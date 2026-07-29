@@ -497,6 +497,11 @@ window.openManageLocations = function() {
   renderManageList();
   const m = document.getElementById('manage-modal');
   m.style.display = 'flex';
+  // warn if Firebase not connected
+  if (!estLocDb) {
+    document.getElementById('manage-list').innerHTML =
+      '<div style="background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.3);border-radius:10px;padding:14px;font-size:13px;color:#ff4444;margin-bottom:12px">⚠️ Firebase 未連線，無法儲存地點。<br>請先到 Firebase Console 確認規則已設定為 read/write true 並發布。</div>';
+  }
 };
 window.closeManageModal = function(e) {
   if (e && e.target !== document.getElementById('manage-modal')) return;
@@ -589,7 +594,13 @@ window.saveLocation = async function() {
   if (coordsRaw && (!lat || !lng)) {
     if (!confirm('座標格式可能有誤，要繼續儲存（沒有座標）嗎？')) return;
   }
-  if (!estLocDb || !estLocRef) { alert('Firebase 尚未連線，請稍後再試'); return; }
+  if (!estLocDb || !estLocRef) {
+    alert('Firebase 未連線！
+
+請到 Firebase Console → Realtime Database → 規則
+確認已設定 .read: true, .write: true 並發布。');
+    return;
+  }
   const data = { name, lat: lat || null, lng: lng || null };
   if (editingLocId) await update(ref(estLocDb, 'est_locations/'+editingLocId), data);
   else await push(estLocRef, data);
