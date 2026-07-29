@@ -538,11 +538,23 @@ window.closeLocModal = function(e) {
 };
 
 window.saveLocation = async function() {
-  const name = document.getElementById('lm-name').value.trim();
-  const lat  = parseFloat(document.getElementById('lm-lat').value) || null;
-  const lng  = parseFloat(document.getElementById('lm-lng').value) || null;
+  const name    = document.getElementById('lm-name').value.trim();
+  const latStr  = document.getElementById('lm-lat').value.trim();
+  const lngStr  = document.getElementById('lm-lng').value.trim();
   if (!name) { alert('請輸入地點名稱'); return; }
-  const data = { name, lat, lng };
+  // validate coords format
+  const lat = latStr ? parseFloat(latStr) : null;
+  const lng = lngStr ? parseFloat(lngStr) : null;
+  if (latStr && (isNaN(lat) || lat < 20 || lat > 26)) {
+    alert('緯度格式不對，台灣緯度約在 22～25 之間
+例如：22.9991'); return;
+  }
+  if (lngStr && (isNaN(lng) || lng < 119 || lng > 122)) {
+    alert('經度格式不對，台灣經度約在 119～122 之間
+例如：120.1951'); return;
+  }
+  if (!estLocDb || !estLocRef) { alert('Firebase 尚未連線，請稍後再試'); return; }
+  const data = { name, lat: lat || null, lng: lng || null };
   if (editingLocId) await update(ref(estLocDb, 'est_locations/'+editingLocId), data);
   else await push(estLocRef, data);
   document.getElementById('loc-modal').style.display = 'none';
