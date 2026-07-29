@@ -305,14 +305,14 @@ function roadDist(lat1, lng1, lat2, lng2) {
 }
 
 // ── Build selects from estLocations ──
-function buildSelect(id) {
+window.buildSelect = function(id) {
   const sel = document.getElementById(id);
   const sorted = [...estLocations].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
   sel.innerHTML = '<option value="">-- 選擇地點 --</option>' +
     sorted.map(l => `<option value="${l.id}">${l.name}</option>`).join('') +
     '<option value="custom">自訂地點…</option>';
 }
-function rebuildSelects() { buildSelect('sel-from'); buildSelect('sel-to'); }
+window.rebuildSelects = function() { buildSelect('sel-from'); buildSelect('sel-to'); }
 
 window.onFromChange = function() {
   document.getElementById('from-custom-wrap').style.display =
@@ -324,7 +324,7 @@ window.onToChange = function() {
     document.getElementById('sel-to').value === 'custom' ? 'block' : 'none';
   toggleManualKm();
 }
-function toggleManualKm() {
+window.toggleManualKm = function() {
   const hasCustom = document.getElementById('sel-from').value === 'custom' ||
                     document.getElementById('sel-to').value === 'custom';
   document.getElementById('manual-km-card').style.display = hasCustom ? 'block' : 'none';
@@ -471,7 +471,7 @@ let estLocDb = null;
 let estLocRef = null;
 
 // Init est_locations in Firebase (run once to seed defaults)
-function initEstLocations(db) {
+window.initEstLocations = function(db) {
   estLocDb  = db;
   estLocRef = ref(db, 'est_locations');
   onValue(estLocRef, snap => {
@@ -487,7 +487,7 @@ function initEstLocations(db) {
   });
 }
 
-function showEstToast(msg) {
+window.showEstToast = function(msg) {
   const t = document.getElementById('est-toast');
   t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
   setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 2000);
@@ -508,7 +508,7 @@ window.closeManageModal = function(e) {
   document.getElementById('manage-modal').style.display = 'none';
 };
 
-function renderManageList() {
+window.renderManageList = function() {
   const el  = document.getElementById('manage-list');
   if (!estLocations.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">還沒有地點</div>'; return; }
   const sorted = [...estLocations].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
