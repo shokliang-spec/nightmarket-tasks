@@ -494,15 +494,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
-const vendorsRef  = ref(db, 'vendors');
-const checkinsRef = ref(db, 'checkins');
-const settingsRef = ref(db, 'settings');
-const marketsRef  = ref(db, 'markets');
+const vendorsRef   = ref(db, 'vendors');
+const checkinsRef  = ref(db, 'checkins');
+const settingsRef  = ref(db, 'settings');
+const marketsRef   = ref(db, 'markets');
+const estLocsRef   = ref(db, 'est_locations');
 
-let vendors   = {};
-let checkins  = {};
-let markets   = {};
-let settings  = { rate: 100 };
+let vendors     = {};
+let checkins    = {};
+let markets     = {};
+let estLocs     = {}; // from est_locations (shared with estimate page)
+let settings    = { rate: 100 };
 let activeDate = todayStr();
 let dowFilter  = 'all';
 let lastUndoId = null;
@@ -540,6 +542,7 @@ function checkLoaded() { if (++loaded >= 4) document.getElementById('loading-scr
 onValue(vendorsRef,  s => { vendors  = s.val() || {}; render(); checkLoaded(); });
 onValue(checkinsRef, s => { checkins = s.val() || {}; render(); checkLoaded(); });
 onValue(marketsRef,  s => { markets  = s.val() || {}; checkLoaded(); });
+onValue(estLocsRef,  s => { estLocs  = s.val() || {}; });
 onValue(settingsRef, s => {
   const v = s.val() || {};
   settings.rate = v.rate || 100;
@@ -749,10 +752,9 @@ window.vcClick = function(id) {
   openCheckinModal(id);
 };
 
-// MARKETS_LIST now comes from Firebase markets collection
+// getMarketNames: 從 est_locations 讀取（與估價表共用）
 function getMarketNames() {
-  const arr = Object.values(markets).map(m => m.name).filter(Boolean).sort();
-  // fallback if Firebase not loaded yet
+  const arr = Object.values(estLocs).map(m => m.name).filter(Boolean).sort((a,b)=>a.localeCompare(b,'zh'));
   return arr.length ? arr : ['花園夜市','武聖夜市','小北成功夜市','永大夜市','新永華夜市','龍埔夜市','大東東夜市','新同安夜市','鹽行夜市'];
 }
 

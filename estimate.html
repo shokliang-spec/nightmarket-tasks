@@ -138,8 +138,13 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
 </head>
 <body>
 <header>
-  <div class="app-title">🛒 夜市攤車運送估價表</div>
-  <div class="app-sub">計算路程與推攤費用</div>
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div class="app-title">🛒 夜市攤車運送估價表</div>
+      <div class="app-sub">計算路程與推攤費用</div>
+    </div>
+    <button onclick="openManageLocations()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif;white-space:nowrap">📍 管理地點</button>
+  </div>
 </header>
 
 <main>
@@ -221,7 +226,7 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
 <script type="module">
 // ── Firebase: 讀取每公里油費 ──
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, onValue, push, update, remove, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDoT4cAuLGTC9ZAP3uG-0tRNRDsAD-l1-4",
@@ -234,18 +239,13 @@ const firebaseConfig = {
 };
 
 let costPerKm = null; // 從 Firebase 讀取的每公里油費
-let fbMarkets = []; // 從 Firebase 讀取的夜市清單
 
 try {
   const fbApp = initializeApp(firebaseConfig, 'estimate');
   const db = getDatabase(fbApp);
 
-  // 讀夜市清單
-  onValue(ref(db, 'markets'), snap => {
-    const data = snap.val() || {};
-    fbMarkets = Object.values(data).map(m => m.name).filter(Boolean).sort();
-    rebuildSelects(); // 重建下拉選單
-  });
+  // 讀估價表專用地點（est_locations）
+  initEstLocations(db);
 
   onValue(ref(db, 'truck_records'), snap => {
     const records = snap.val() || {};
@@ -263,19 +263,20 @@ try {
   });
 } catch(e) { console.log('Firebase init error', e); }
 
-// ── 夜市座標（WGS84）──
-const LOCATIONS = [
-  { id: 'huayuan',   name: '花園夜市',     lat: 22.9991, lng: 120.1951 },
-  { id: 'wusheng',   name: '武聖夜市',     lat: 22.9895, lng: 120.1979 },
-  { id: 'xiaobei',   name: '小北成功夜市', lat: 22.9983, lng: 120.2013 },
-  { id: 'yongda',    name: '永大夜市',     lat: 22.9724, lng: 120.2547 },
-  { id: 'xinyonghua',name: '新永華夜市',  lat: 22.9876, lng: 120.1647 },
-  { id: 'longpu',    name: '龍埔夜市',     lat: 22.9643, lng: 120.2398 },
-  { id: 'dadong',    name: '大東東夜市',   lat: 22.9896, lng: 120.2246 },
-  { id: 'xintongan', name: '新同安夜市',   lat: 23.0243, lng: 120.1812 },
-  { id: 'yanxing',   name: '鹽行夜市',     lat: 22.9998, lng: 120.2698 },
-  { id: 'custom',    name: '自訂地點…',   lat: null,    lng: null     },
+// ── 預設夜市座標（第一次使用時寫入 Firebase）──
+const DEFAULT_LOCATIONS = [
+  { name: '花園夜市',     lat: 22.9991, lng: 120.1951 },
+  { name: '武聖夜市',     lat: 22.9895, lng: 120.1979 },
+  { name: '小北成功夜市', lat: 22.9983, lng: 120.2013 },
+  { name: '永大夜市',     lat: 22.9724, lng: 120.2547 },
+  { name: '新永華夜市',   lat: 22.9876, lng: 120.1647 },
+  { name: '龍埔夜市',     lat: 22.9643, lng: 120.2398 },
+  { name: '大東東夜市',   lat: 22.9896, lng: 120.2246 },
+  { name: '新同安夜市',   lat: 23.0243, lng: 120.1812 },
+  { name: '鹽行夜市',     lat: 22.9998, lng: 120.2698 },
 ];
+
+let estLocations = []; // loaded from Firebase est_locations
 
 // ── Haversine 距離 (公里) ──
 function haversine(lat1, lng1, lat2, lng2) {
@@ -291,29 +292,15 @@ function roadDist(lat1, lng1, lat2, lng2) {
   return haversine(lat1, lng1, lat2, lng2) * 1.35;
 }
 
-// ── Build selects ──
-// LOCATIONS 保留夜市座標（用於計算距離）
-// 下拉選單優先用 Firebase 夜市名稱，找不到座標的用自訂地點距離計算
+// ── Build selects from estLocations ──
 function buildSelect(id) {
   const sel = document.getElementById(id);
-  // 合併 Firebase 夜市 + 固定座標夜市（去重）
-  const names = fbMarkets.length ? fbMarkets : LOCATIONS.filter(l=>l.id!=='custom').map(l=>l.name);
-  const uniqueNames = [...new Set(names)];
+  const sorted = [...estLocations].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
   sel.innerHTML = '<option value="">-- 選擇地點 --</option>' +
-    uniqueNames.map(name => {
-      const loc = LOCATIONS.find(l => l.name === name);
-      return `<option value="${loc ? loc.id : 'fb_'+name}" data-name="${name}">${name}</option>`;
-    }).join('') +
+    sorted.map(l => `<option value="${l.id}">${l.name}</option>`).join('') +
     '<option value="custom">自訂地點…</option>';
 }
-
-function rebuildSelects() {
-  buildSelect('sel-from');
-  buildSelect('sel-to');
-}
-
-buildSelect('sel-from');
-buildSelect('sel-to');
+function rebuildSelects() { buildSelect('sel-from'); buildSelect('sel-to'); }
 
 window.onFromChange = function() {
   document.getElementById('from-custom-wrap').style.display =
@@ -352,20 +339,14 @@ window.calculate = function() {
   if (!fromId || !toId) { alert('請選擇出發和到達地點'); return; }
   if (fromId === toId && fromId !== 'custom') { alert('出發和到達地點相同'); return; }
 
-  const fromLoc = LOCATIONS.find(l => l.id === fromId);
-  const toLoc   = LOCATIONS.find(l => l.id === toId);
+  const fromLoc = estLocations.find(l => l.id === fromId);
+  const toLoc   = estLocations.find(l => l.id === toId);
 
-  // Get display name (support fb_ prefixed IDs from Firebase-only markets)
-  const getNameFromSel = (selId, customId, customInputId) => {
-    if (selId === 'custom') return document.getElementById(customInputId).value || '自訂地點';
-    if (selId.startsWith('fb_')) return selId.slice(3); // Firebase market name
-    return LOCATIONS.find(l=>l.id===selId)?.name || selId;
-  };
-  let fromName = getNameFromSel(fromId, 'custom', 'from-custom');
-  let toName   = getNameFromSel(toId,   'custom', 'to-custom');
+  let fromName = fromId === 'custom' ? (document.getElementById('from-custom').value || '自訂地點') : (fromLoc?.name || fromId);
+  let toName   = toId   === 'custom' ? (document.getElementById('to-custom').value   || '自訂地點') : (toLoc?.name   || toId);
 
-  // If either side has no coords (Firebase-only market or custom), show manual input
-  if (fromId === 'custom' || toId === 'custom' || fromId.startsWith('fb_') || toId.startsWith('fb_')) {
+  // If either side has no coords or is custom, show manual input
+  if (fromId === 'custom' || toId === 'custom' || !fromLoc?.lat || !toLoc?.lat) {
     document.getElementById('manual-km-card').style.display = 'block';
     const manualKm = parseFloat(document.getElementById('manual-km').value);
     if (!manualKm || manualKm <= 0) {
@@ -382,6 +363,7 @@ window.calculate = function() {
   }
 
   const km    = roadDist(fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng);
+  document.getElementById('manual-km-card').style.display = 'none';
   const price = calcPrice(km, rateNear, rateFar);
   showResult(fromName, toName, km, price, rateNear, rateFar);
   addHistory(fromName, toName, km, price, rateNear, rateFar);
@@ -459,8 +441,8 @@ function renderHistory() {
 
 window.loadHistory = function(i) {
   const h = history[i];
-  const fromLoc = LOCATIONS.find(l => l.name === h.from);
-  const toLoc   = LOCATIONS.find(l => l.name === h.to);
+  const fromLoc = estLocations.find(l => l.name === h.from);
+  const toLoc   = estLocations.find(l => l.name === h.to);
   if (fromLoc) document.getElementById('sel-from').value = fromLoc.id;
   if (toLoc)   document.getElementById('sel-to').value   = toLoc.id;
   document.getElementById('rate-near').value = h.rateNear || 100;
@@ -470,6 +452,155 @@ window.loadHistory = function(i) {
 }
 
 renderHistory();
+
+// ── MANAGE LOCATIONS ──
+let editingLocId = null;
+let estLocDb = null;
+let estLocRef = null;
+
+// Init est_locations in Firebase (run once to seed defaults)
+function initEstLocations(db) {
+  estLocDb  = db;
+  estLocRef = ref(db, 'est_locations');
+  onValue(estLocRef, snap => {
+    const data = snap.val();
+    if (!data) {
+      // First time: seed defaults
+      DEFAULT_LOCATIONS.forEach(loc => push(estLocRef, loc));
+    } else {
+      estLocations = Object.entries(data).map(([id,l])=>({id,...l}));
+      rebuildSelects();
+      renderManageList();
+    }
+  });
+}
+
+function showEstToast(msg) {
+  const t = document.getElementById('est-toast');
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 2000);
+}
+
+window.openManageLocations = function() {
+  renderManageList();
+  const m = document.getElementById('manage-modal');
+  m.style.display = 'flex';
+};
+window.closeManageModal = function(e) {
+  if (e && e.target !== document.getElementById('manage-modal')) return;
+  document.getElementById('manage-modal').style.display = 'none';
+};
+
+function renderManageList() {
+  const el  = document.getElementById('manage-list');
+  if (!estLocations.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">還沒有地點</div>'; return; }
+  const sorted = [...estLocations].sort((a,b)=>a.name.localeCompare(b.name,'zh'));
+  el.innerHTML = sorted.map(l => `
+    <div style="display:flex;align-items:center;gap:10px;background:#252422;border:1px solid #333;border-radius:10px;padding:12px 14px;margin-bottom:8px">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700">${esc(l.name)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${l.lat && l.lng ? `📍 ${l.lat}, ${l.lng}` : '⚠️ 無座標（需手動填距離）'}</div>
+      </div>
+      <button onclick="openEditLocation('${l.id}')" style="background:rgba(61,142,255,0.1);color:#4a9eff;border:1px solid rgba(61,142,255,0.25);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer">編輯</button>
+      <button onclick="deleteLocation('${l.id}')" style="background:rgba(255,59,48,0.08);color:#ff4444;border:1px solid rgba(255,59,48,0.2);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer">刪除</button>
+    </div>`).join('');
+}
+
+window.openAddLocationModal = function() {
+  editingLocId = null;
+  document.getElementById('loc-modal-title').textContent = '新增地點';
+  document.getElementById('lm-name').value = '';
+  document.getElementById('lm-lat').value  = '';
+  document.getElementById('lm-lng').value  = '';
+  document.getElementById('loc-modal-actions').innerHTML = `
+    <button onclick="closeLocModal()" style="flex:1;padding:13px;background:#252422;color:#7a7670;border:1px solid #333;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">取消</button>
+    <button onclick="saveLocation()" style="flex:1;padding:13px;background:var(--accent);color:#111;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">儲存</button>`;
+  document.getElementById('loc-modal').style.display = 'flex';
+};
+
+window.openEditLocation = function(id) {
+  const l = estLocations.find(x=>x.id===id); if (!l) return;
+  editingLocId = id;
+  document.getElementById('loc-modal-title').textContent = '編輯地點';
+  document.getElementById('lm-name').value = l.name;
+  document.getElementById('lm-lat').value  = l.lat || '';
+  document.getElementById('lm-lng').value  = l.lng || '';
+  document.getElementById('loc-modal-actions').innerHTML = `
+    <button onclick="deleteLocation('${id}');closeLocModal();" style="flex:1;padding:13px;background:rgba(255,59,48,0.1);color:#ff4444;border:1px solid rgba(255,59,48,0.2);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">刪除</button>
+    <button onclick="closeLocModal()" style="flex:1;padding:13px;background:#252422;color:#7a7670;border:1px solid #333;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">取消</button>
+    <button onclick="saveLocation()" style="flex:1;padding:13px;background:var(--accent);color:#111;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">儲存</button>`;
+  document.getElementById('loc-modal').style.display = 'flex';
+};
+
+window.closeLocModal = function(e) {
+  if (e && e.target !== document.getElementById('loc-modal')) return;
+  document.getElementById('loc-modal').style.display = 'none';
+};
+
+window.saveLocation = async function() {
+  const name = document.getElementById('lm-name').value.trim();
+  const lat  = parseFloat(document.getElementById('lm-lat').value) || null;
+  const lng  = parseFloat(document.getElementById('lm-lng').value) || null;
+  if (!name) { alert('請輸入地點名稱'); return; }
+  const data = { name, lat, lng };
+  if (editingLocId) await update(ref(estLocDb, 'est_locations/'+editingLocId), data);
+  else await push(estLocRef, data);
+  document.getElementById('loc-modal').style.display = 'none';
+  showEstToast(editingLocId ? '✏️ 地點已更新' : '✅ 地點已新增');
+};
+
+window.deleteLocation = async function(id) {
+  if (!confirm('確定刪除這個地點？')) return;
+  await remove(ref(estLocDb, 'est_locations/'+id));
+  showEstToast('🗑 已刪除');
+};
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
+<!-- ── MODAL: MANAGE LOCATIONS ── -->
+<div id="manage-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);align-items:flex-end" onclick="closeManageModal(event)">
+  <div style="width:100%;background:#1c1b1a;border-radius:22px 22px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:90dvh;overflow-y:auto;transform:translateY(0);transition:transform 0.3s">
+    <div style="width:36px;height:4px;background:#333;border-radius:2px;margin:0 auto 16px"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:17px;font-weight:700">📍 管理地點</div>
+      <button onclick="openAddLocationModal()" style="background:var(--accent);color:#111;border:none;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">＋ 新增</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;background:rgba(61,142,255,0.08);border:1px solid rgba(61,142,255,0.2);border-radius:8px;padding:8px 12px">
+      💡 座標可從 Google Maps 取得：長按地點 → 複製座標
+    </div>
+    <div id="manage-list"></div>
+    <button onclick="closeManageModal()" style="width:100%;margin-top:14px;padding:13px;background:#252422;color:#7a7670;border:1px solid #333;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">關閉</button>
+  </div>
+</div>
+
+<!-- ── MODAL: ADD/EDIT LOCATION ── -->
+<div id="loc-modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.8);align-items:flex-end" onclick="closeLocModal(event)">
+  <div style="width:100%;background:#1c1b1a;border-radius:22px 22px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom))">
+    <div style="width:36px;height:4px;background:#333;border-radius:2px;margin:0 auto 16px"></div>
+    <div id="loc-modal-title" style="font-size:17px;font-weight:700;margin-bottom:16px">新增地點</div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">地點名稱</label>
+      <input id="lm-name" type="text" placeholder="例：善化夜市" style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">緯度（lat）</label>
+        <input id="lm-lat" type="number" step="0.0001" placeholder="例：23.0123" style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">經度（lng）</label>
+        <input id="lm-lng" type="number" step="0.0001" placeholder="例：120.1234" style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">
+      不知道座標？留空後按計算時手動填公里數也可以
+    </div>
+    <div id="loc-modal-actions" style="display:flex;gap:8px"></div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="est-toast" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:#1c1b1a;border:1px solid #333;border-radius:10px;padding:10px 18px;font-size:13px;z-index:800;opacity:0;transition:all 0.25s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5)"></div>
+
 </body>
 </html>
