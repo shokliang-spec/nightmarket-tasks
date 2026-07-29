@@ -506,12 +506,39 @@ function renderManageList() {
     </div>`).join('');
 }
 
+window.parseCoordsInput = function() {
+  const raw = document.getElementById('lm-coords').value.trim();
+  const parsed = document.getElementById('lm-coords-parsed');
+  // Try to parse "lat, lng" or "lat lng"
+  const match = raw.match(/(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/);
+  if (!match) {
+    parsed.textContent = raw.length > 3 ? '⚠️ 格式不對，請貼上完整座標' : '';
+    parsed.style.color = 'var(--red)';
+    document.getElementById('lm-lat').value = '';
+    document.getElementById('lm-lng').value = '';
+    return;
+  }
+  const lat = parseFloat(match[1]);
+  const lng = parseFloat(match[2]);
+  if (lat >= 20 && lat <= 26 && lng >= 119 && lng <= 122) {
+    parsed.textContent = `✓ 緯度 ${lat}，經度 ${lng}`;
+    parsed.style.color = 'var(--green)';
+    document.getElementById('lm-lat').value = lat;
+    document.getElementById('lm-lng').value = lng;
+  } else {
+    parsed.textContent = '⚠️ 座標不在台灣範圍內，請確認';
+    parsed.style.color = 'var(--red)';
+  }
+};
+
 window.openAddLocationModal = function() {
   editingLocId = null;
   document.getElementById('loc-modal-title').textContent = '新增地點';
-  document.getElementById('lm-name').value = '';
-  document.getElementById('lm-lat').value  = '';
-  document.getElementById('lm-lng').value  = '';
+  document.getElementById('lm-name').value   = '';
+  document.getElementById('lm-coords').value = '';
+  document.getElementById('lm-lat').value    = '';
+  document.getElementById('lm-lng').value    = '';
+  document.getElementById('lm-coords-parsed').textContent = '';
   document.getElementById('loc-modal-actions').innerHTML = `
     <button onclick="closeLocModal()" style="flex:1;padding:13px;background:#252422;color:#7a7670;border:1px solid #333;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">取消</button>
     <button onclick="saveLocation()" style="flex:1;padding:13px;background:var(--accent);color:#111;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">儲存</button>`;
@@ -522,9 +549,12 @@ window.openEditLocation = function(id) {
   const l = estLocations.find(x=>x.id===id); if (!l) return;
   editingLocId = id;
   document.getElementById('loc-modal-title').textContent = '編輯地點';
-  document.getElementById('lm-name').value = l.name;
-  document.getElementById('lm-lat').value  = l.lat || '';
-  document.getElementById('lm-lng').value  = l.lng || '';
+  document.getElementById('lm-name').value   = l.name;
+  document.getElementById('lm-lat').value    = l.lat || '';
+  document.getElementById('lm-lng').value    = l.lng || '';
+  document.getElementById('lm-coords').value = (l.lat && l.lng) ? `${l.lat}, ${l.lng}` : '';
+  document.getElementById('lm-coords-parsed').textContent = (l.lat && l.lng) ? `✓ 緯度 ${l.lat}，經度 ${l.lng}` : '';
+  document.getElementById('lm-coords-parsed').style.color = 'var(--green)';
   document.getElementById('loc-modal-actions').innerHTML = `
     <button onclick="deleteLocation('${id}');closeLocModal();" style="flex:1;padding:13px;background:rgba(255,59,48,0.1);color:#ff4444;border:1px solid rgba(255,59,48,0.2);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">刪除</button>
     <button onclick="closeLocModal()" style="flex:1;padding:13px;background:#252422;color:#7a7670;border:1px solid #333;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">取消</button>
@@ -539,19 +569,13 @@ window.closeLocModal = function(e) {
 
 window.saveLocation = async function() {
   const name    = document.getElementById('lm-name').value.trim();
-  const latStr  = document.getElementById('lm-lat').value.trim();
-  const lngStr  = document.getElementById('lm-lng').value.trim();
   if (!name) { alert('請輸入地點名稱'); return; }
-  // validate coords format
-  const lat = latStr ? parseFloat(latStr) : null;
-  const lng = lngStr ? parseFloat(lngStr) : null;
-  if (latStr && (isNaN(lat) || lat < 20 || lat > 26)) {
-    alert('緯度格式不對，台灣緯度約在 22～25 之間
-例如：22.9991'); return;
-  }
-  if (lngStr && (isNaN(lng) || lng < 119 || lng > 122)) {
-    alert('經度格式不對，台灣經度約在 119～122 之間
-例如：120.1951'); return;
+  const lat = parseFloat(document.getElementById('lm-lat').value) || null;
+  const lng = parseFloat(document.getElementById('lm-lng').value) || null;
+  // if coords field has text but parsing failed, warn
+  const coordsRaw = document.getElementById('lm-coords').value.trim();
+  if (coordsRaw && (!lat || !lng)) {
+    if (!confirm('座標格式可能有誤，要繼續儲存（沒有座標）嗎？')) return;
   }
   if (!estLocDb || !estLocRef) { alert('Firebase 尚未連線，請稍後再試'); return; }
   const data = { name, lat: lat || null, lng: lng || null };
@@ -594,19 +618,19 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
       <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">地點名稱</label>
       <input id="lm-name" type="text" placeholder="例：善化夜市" style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div>
-        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">緯度（lat）</label>
-        <input id="lm-lat" type="number" step="0.0001" placeholder="例：23.0123" style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
-      </div>
-      <div>
-        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">經度（lng）</label>
-        <input id="lm-lng" type="number" step="0.0001" placeholder="例：120.1234" style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
-      </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">座標（從 Google Maps 複製貼上）</label>
+      <input id="lm-coords" type="text" placeholder="例：22.9991, 120.1951" oninput="parseCoordsInput()"
+        style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
+      <div id="lm-coords-parsed" style="font-size:11px;margin-top:6px;color:var(--muted)"></div>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">
-      不知道座標？留空後按計算時手動填公里數也可以
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px;background:rgba(255,149,0,0.06);border:1px solid rgba(255,149,0,0.2);border-radius:8px;padding:8px 12px">
+      📱 Google Maps → 長按地點 → 點最上方座標數字 → 複製 → 貼到上方欄位<br>
+      💡 不填座標也可以，計算時手動輸入公里數
     </div>
+    <!-- hidden fields for actual values -->
+    <input id="lm-lat" type="hidden">
+    <input id="lm-lng" type="hidden">
     <div id="loc-modal-actions" style="display:flex;gap:8px"></div>
   </div>
 </div>
