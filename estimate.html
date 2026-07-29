@@ -223,6 +223,49 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
   </div>
 </main>
 
+<!-- ── MODAL: 管理地點 ── -->
+<div id="manage-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);align-items:flex-end" onclick="closeManageModal(event)">
+  <div style="width:100%;background:#1c1b1a;border-radius:22px 22px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:90dvh;overflow-y:auto">
+    <div style="width:36px;height:4px;background:#333;border-radius:2px;margin:0 auto 16px"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:17px;font-weight:700">📍 管理地點</div>
+      <button onclick="openAddLocationModal()" style="background:var(--accent);color:#111;border:none;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">＋ 新增</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;background:rgba(61,142,255,0.08);border:1px solid rgba(61,142,255,0.2);border-radius:8px;padding:8px 12px">
+      💡 座標從 Google Maps 複製：長按地點 → 點左下角數字座標 → 複製
+    </div>
+    <div id="manage-list"></div>
+    <button onclick="closeManageModal()" style="width:100%;margin-top:14px;padding:13px;background:#252422;color:#7a7670;border:1px solid #333;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">關閉</button>
+  </div>
+</div>
+
+<!-- ── MODAL: 新增/編輯地點 ── -->
+<div id="loc-modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.8);align-items:flex-end" onclick="closeLocModal(event)">
+  <div style="width:100%;background:#1c1b1a;border-radius:22px 22px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom))">
+    <div style="width:36px;height:4px;background:#333;border-radius:2px;margin:0 auto 16px"></div>
+    <div id="loc-modal-title" style="font-size:17px;font-weight:700;margin-bottom:16px">新增地點</div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">地點名稱</label>
+      <input id="lm-name" type="text" placeholder="例：善化夜市" style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">座標（從 Google Maps 複製貼上）</label>
+      <input id="lm-coords" type="text" placeholder="例：22.9991, 120.1951" oninput="parseCoordsInput()"
+        style="width:100%;background:#252422;border:1.5px solid #333;border-radius:10px;color:#f2ede4;padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none">
+      <div id="lm-coords-parsed" style="font-size:11px;margin-top:6px;color:var(--muted)"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">
+      不填座標也可以，計算時手動輸入公里數
+    </div>
+    <input id="lm-lat" type="hidden">
+    <input id="lm-lng" type="hidden">
+    <div id="loc-modal-actions" style="display:flex;gap:8px"></div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="est-toast" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:#1c1b1a;border:1px solid #333;border-radius:10px;padding:10px 18px;font-size:13px;z-index:800;opacity:0;transition:all 0.25s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5)"></div>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
