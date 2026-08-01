@@ -638,8 +638,9 @@ function renderGrid() {
 function updateStats() {
   const todayCheckins = Object.values(checkins).filter(c => c.date === activeDate);
   const count = todayCheckins.length;
-  // sum per-vendor fees
+  // 用實際打卡時輸入的金額加總
   const money = todayCheckins.reduce((sum, c) => {
+    if (c.fee != null && c.fee > 0) return sum + Number(c.fee);
     const v = vendors[c.vendorId];
     return sum + (v && v.fee != null ? Number(v.fee) : (settings.rate || 100));
   }, 0);
@@ -658,8 +659,9 @@ function updateStats() {
       .map(c => c.ts).sort();
     const first = times.length ? fmtTime(times[0]) : '';
     const last  = times.length ? fmtTime(times[times.length-1]) : '';
+    const avgFee = count > 0 ? Math.round(money / count) : 0;
     document.getElementById('sum-sub').textContent =
-      `${first} – ${last}・每攤 $${settings.rate}`;
+      `${first} – ${last}・共 ${count} 攤・平均 $${avgFee}`;
   }
 }
 
@@ -782,7 +784,11 @@ function openCheckinModal(id) {
   const v = vendors[id] || {};
   document.getElementById('ci-icon').textContent = v.icon || v.name?.slice(0,1) || '🛒';
   document.getElementById('ci-name').textContent = v.name || '';
-  const lastFee = v.fee != null ? v.fee : 100;
+  // 優先用上次實際打卡的金額，沒有則用攤商預設費用
+  const lastCheckin = Object.values(checkins)
+    .filter(c => c.vendorId === id && c.fee)
+    .sort((a,b) => (b.ts||0)-(a.ts||0))[0];
+  const lastFee = lastCheckin ? lastCheckin.fee : (v.fee != null ? v.fee : 100);
   document.getElementById('ci-fee-hint').textContent = `上次金額：$${lastFee}`;
   document.getElementById('ci-fee').value  = lastFee;
   document.getElementById('ci-note').value = '';
