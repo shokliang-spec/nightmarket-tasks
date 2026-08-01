@@ -502,7 +502,10 @@ function renderMain() {
         ${r.amount ? `<div class="record-amount">$${Number(r.amount).toLocaleString()}</div>` : ''}
         <div class="record-user">👤 ${esc(r.userName||'未知')}</div>
       </div>
-      <button class="record-del" onclick="delRecord('${r.id}')">✕</button>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        <button class="record-del" style="color:var(--blue);font-size:12px;padding:3px 8px;border-radius:5px;background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.2)" onclick="editRecord('${r.id}')">編輯</button>
+        <button class="record-del" onclick="delRecord('${r.id}')">✕</button>
+      </div>
     </div>`;
   }).join('') : `<div class="empty-state"><div class="empty-icon">${{fuel:'⛽',service:'🔧',expense:'💸'}[activeTab]}</div>還沒有${typeMap[activeTab]}紀錄</div>`;
 
@@ -604,6 +607,66 @@ window.saveRecord = async function() {
   await push(recordsRef, data);
   document.getElementById('record-modal').classList.remove('open');
   showToast('✅ 紀錄已儲存');
+};
+
+window.editRecord = function(id) {
+  const r = records[id]; if (!r) return;
+  // reuse openRecordModal but pre-fill fields
+  activeTab = r.type;
+  // switch tab UI
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${r.type}"]`)?.classList.add('active');
+  openRecordModal();
+  // pre-fill after modal renders
+  setTimeout(() => {
+    if (document.getElementById('rf-date'))    document.getElementById('rf-date').value    = r.date    || '';
+    if (document.getElementById('rf-odo'))     document.getElementById('rf-odo').value     = r.odometer|| '';
+    if (document.getElementById('rf-amount'))  document.getElementById('rf-amount').value  = r.amount  || '';
+    if (document.getElementById('rf-note'))    document.getElementById('rf-note').value    = r.note    || '';
+    if (r.type === 'fuel') {
+      if (document.getElementById('rf-liters')) document.getElementById('rf-liters').value = r.liters  || '';
+    } else if (r.type === 'service') {
+      if (document.getElementById('rf-item'))     document.getElementById('rf-item').value     = r.item    || '';
+      if (document.getElementById('rf-next-odo')) document.getElementById('rf-next-odo').value = r.nextOdo || '';
+      if (document.getElementById('rf-next-date'))document.getElementById('rf-next-date').value= r.nextDate|| '';
+    } else {
+      if (document.getElementById('rf-item')) document.getElementById('rf-item').value = r.item || '';
+    }
+    // change modal title and save button to update mode
+    document.getElementById('record-modal-title').textContent =
+      { fuel:'✏️ 編輯加油紀錄', service:'✏️ 編輯保養紀錄', expense:'✏️ 編輯費用紀錄' }[r.type];
+    // override save button
+    const saveBtn = document.querySelector('#record-modal .modal-btn.btn-save');
+    if (saveBtn) {
+      saveBtn.textContent = '更新';
+      saveBtn.onclick = () => updateRecord(id);
+    }
+  }, 50);
+};
+
+window.updateRecord = async function(id) {
+  const r = records[id]; if (!r) return;
+  const date   = document.getElementById('rf-date')?.value   || '';
+  const odo    = document.getElementById('rf-odo')?.value    || '';
+  const amount = document.getElementById('rf-amount')?.value || '';
+  const note   = document.getElementById('rf-note')?.value.trim() || '';
+  const data   = { ...r, date, odometer: odo, amount, note };
+
+  if (r.type === 'fuel') {
+    data.liters = document.getElementById('rf-liters')?.value || '';
+    if (!data.liters && !amount) { alert('請填寫加油量或金額'); return; }
+  } else if (r.type === 'service') {
+    data.item     = document.getElementById('rf-item')?.value.trim()     || '';
+    data.nextOdo  = document.getElementById('rf-next-odo')?.value        || '';
+    data.nextDate = document.getElementById('rf-next-date')?.value       || '';
+    if (!data.item) { alert('請填寫保養項目'); return; }
+  } else {
+    data.item = document.getElementById('rf-item')?.value.trim() || '';
+    if (!data.item) { alert('請填寫費用項目'); return; }
+  }
+  await update(ref(db, 'truck_records/' + id), data);
+  document.getElementById('record-modal').classList.remove('open');
+  showToast('✏️ 紀錄已更新');
 };
 
 window.delRecord = async function(id) {
