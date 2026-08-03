@@ -3,21 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>貨車紀錄本</title>
+<title>攤車打卡</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Zen+Dots&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0d0d0d;
-  --surface: #181818;
-  --surface2: #202020;
-  --border: #2e2e2e;
-  --accent: #e8c84a;   /* amber – fuel gauge yellow */
-  --blue: #4a9eff;
-  --green: #3dba6f;
-  --red: #ff4444;
-  --orange: #ff8c3a;
-  --text: #f0ede4;
-  --muted: #6e6e6e;
+  --bg: #111010;
+  --surface: #1c1b1a;
+  --surface2: #252422;
+  --border: #333230;
+  --accent: #ff9500;
+  --green: #34c759;
+  --blue: #3d8eff;
+  --red: #ff3b30;
+  --text: #f2ede4;
+  --muted: #7a7670;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
@@ -25,120 +24,137 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 
 /* ── HEADER ── */
 header {
-  background: var(--surface);
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(17,16,16,0.95); backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   padding: 14px 20px 12px;
-  position: sticky; top: 0; z-index: 50;
-  display: flex; align-items: center; gap: 12px;
 }
-.app-icon { font-size: 24px; }
-.app-title { font-family: 'Zen Dots', monospace; font-size: 16px; color: var(--accent); flex: 1; }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.app-title { font-family: 'Zen Dots', monospace; font-size: 18px; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 8px; }
 .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
-.conn-dot.on { background: var(--green); box-shadow: 0 0 5px var(--green); }
-.user-pill {
-  display: flex; align-items: center; gap: 6px;
+.conn-dot.on { background: var(--green); box-shadow: 0 0 4px var(--green); }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 9px;
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 5px 12px; cursor: pointer;
-  font-size: 12px; font-weight: 700; transition: border-color 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; transition: background 0.15s;
 }
-.user-pill:active { border-color: var(--accent); }
-.user-avatar { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #111; }
+.icon-btn:active { background: var(--border); }
 
-/* ── ODOMETER BANNER ── */
-.odo-banner {
-  background: linear-gradient(135deg, #1a1700 0%, #111 60%);
-  border-bottom: 1px solid var(--border);
-  padding: 16px 20px;
-  display: flex; align-items: center; gap: 16px;
+/* ── TODAY STATS BAR ── */
+.stats-bar {
+  display: flex; gap: 8px;
 }
-.odo-main { flex: 1; }
-.odo-label { font-size: 10px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; }
-.odo-value { font-family: 'Zen Dots', monospace; font-size: 28px; color: var(--accent); letter-spacing: 0.05em; }
-.odo-unit { font-size: 13px; color: var(--muted); margin-left: 3px; }
-.odo-next-service {
-  text-align: right;
+.stat-pill {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 12px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px;
 }
-.next-label { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
-.next-value { font-family: 'Zen Dots', monospace; font-size: 16px; }
-.next-value.near { color: var(--red); }
-.next-value.ok   { color: var(--green); }
-.next-value.none { color: var(--muted); font-size: 13px; }
+.stat-num { font-family: 'Zen Dots', monospace; font-size: 15px; color: var(--accent); }
+.stat-money { color: var(--green); }
+.rate-input {
+  background: transparent; border: none; outline: none;
+  font-family: 'Zen Dots', monospace; font-size: 15px;
+  color: var(--green); width: 60px; text-align: right;
+  font-weight: 700;
+}
 
-/* ── TABS ── */
-.tabs {
-  display: flex; border-bottom: 1px solid var(--border);
-  background: var(--surface); position: sticky; top: 57px; z-index: 40;
+/* ── DATE TABS ── */
+.date-tabs {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  padding: 12px 20px 0;
 }
-.tab {
-  flex: 1; padding: 12px 6px; text-align: center;
-  font-size: 12px; font-weight: 700; color: var(--muted);
-  cursor: pointer; border-bottom: 2px solid transparent;
-  transition: all 0.15s; letter-spacing: 0.03em;
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
+.date-tabs::-webkit-scrollbar { display: none; }
+.date-tab {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); font-size: 12px; cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif; transition: all 0.15s;
+  white-space: nowrap;
 }
-.tab .tab-icon { font-size: 18px; }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.date-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(255,149,0,0.1); }
 
 /* ── MAIN ── */
-main { padding: 14px 14px 100px; max-width: 700px; margin: 0 auto; }
+main { padding: 16px 16px 120px; }
 
-/* ── ADD BTN ── */
-.add-btn {
-  width: 100%; padding: 14px; border-radius: 12px;
-  background: var(--accent); color: #111;
-  border: none; font-size: 15px; font-weight: 900;
-  cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
-  transition: all 0.15s; margin-bottom: 16px;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+/* ── VENDOR CARDS ── */
+.vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
-.add-btn:active { transform: scale(0.98); background: #d4b43a; }
+.vendor-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 18px;
+  padding: 20px 14px 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer; transition: all 0.18s;
+  position: relative; user-select: none;
+  min-height: 130px; justify-content: center;
+}
+.vendor-card:active { transform: scale(0.95); }
+.vendor-card.done {
+  border-color: var(--green);
+  background: rgba(52,199,89,0.08);
+}
+.vendor-icon { font-size: 44px; line-height: 1; transition: transform 0.2s; }
+.vendor-card.done .vendor-icon { transform: scale(0.85); }
+.vendor-name { font-size: 14px; font-weight: 700; text-align: center; }
+.vendor-time {
+  font-size: 11px; color: var(--green); font-weight: 600;
+  background: rgba(52,199,89,0.12); border: 1px solid rgba(52,199,89,0.25);
+  border-radius: 6px; padding: 2px 8px;
+}
+.done-badge {
+  position: absolute; top: 10px; right: 10px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--green); display: flex; align-items: center; justify-content: center;
+  font-size: 13px; opacity: 0; transition: opacity 0.2s;
+}
+.vendor-card.done .done-badge { opacity: 1; }
+.vendor-contact {
+  font-size: 10px; color: var(--muted); text-align: center;
+}
+.vendor-card.long-pressing {
+  border-color: var(--blue);
+  background: rgba(61,142,255,0.08);
+}
 
-/* ── STATS ROW ── */
-.stats-row { display: flex; gap: 8px; margin-bottom: 14px; }
-.stat-card {
-  flex: 1; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 12px;
-}
-.stat-val { font-family: 'Zen Dots', monospace; font-size: 18px; color: var(--accent); }
-.stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.05em; }
-
-/* ── RECORD LIST ── */
-.record-list { display: flex; flex-direction: column; gap: 8px; }
-.record-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px 16px;
-  display: flex; gap: 12px; align-items: flex-start;
-  animation: fadeIn 0.2s ease-out;
-}
-@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
-.record-type-dot {
-  width: 36px; height: 36px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; flex-shrink: 0;
-}
-.dot-fuel    { background: rgba(232,200,74,0.12); }
-.dot-service { background: rgba(74,158,255,0.12); }
-.dot-expense { background: rgba(255,140,58,0.12); }
-.record-body { flex: 1; min-width: 0; }
-.record-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
-.record-meta { font-size: 11px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
-.record-amount { font-family: 'Zen Dots', monospace; font-size: 15px; color: var(--accent); margin-top: 2px; }
-.record-user { font-size: 10px; color: var(--muted); margin-top: 3px; }
-.record-del {
-  background: transparent; border: none; color: var(--muted);
-  font-size: 16px; cursor: pointer; padding: 2px 4px; flex-shrink: 0;
-  transition: color 0.15s;
-}
-.record-del:active { color: var(--red); }
+/* ── EMPTY ── */
 .empty-state {
-  text-align: center; padding: 48px 20px; color: var(--muted); font-size: 14px;
+  text-align: center; padding: 60px 20px;
+  color: var(--muted); font-size: 14px;
 }
-.empty-icon { font-size: 40px; margin-bottom: 10px; }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
 
-/* ── MODAL ── */
+/* ── BOTTOM SUMMARY ── */
+.bottom-summary {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(17,16,16,0.97); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 12px;
+}
+.summary-text { flex: 1; }
+.summary-done { font-size: 22px; font-weight: 900; }
+.summary-done span { color: var(--green); font-family: 'Zen Dots', monospace; }
+.summary-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.summary-earning {
+  text-align: right;
+}
+.earning-num {
+  font-family: 'Zen Dots', monospace;
+  font-size: 22px; font-weight: 700; color: var(--accent);
+}
+.earning-label { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* ── MODALS ── */
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.72);
   display: flex; align-items: flex-end;
   opacity: 0; pointer-events: none; transition: opacity 0.25s;
 }
@@ -149,155 +165,321 @@ main { padding: 14px 14px 100px; max-width: 700px; margin: 0 auto; }
   padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-  max-height: 92dvh; overflow-y: auto;
+  max-height: 90dvh; overflow-y: auto;
 }
 .modal-overlay.open .modal-sheet { transform: translateY(0); }
 .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
-.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-.field { margin-bottom: 12px; }
-.field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; letter-spacing: 0.05em; }
-.field input, .field select, .field textarea {
-  width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
-  border-radius: 10px; color: var(--text); padding: 11px 13px;
-  font-size: 14px; font-family: 'Noto Sans TC', sans-serif;
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.modal-field { margin-bottom: 14px; }
+.input-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
+.input-field {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); padding: 11px 14px;
+  font-size: 15px; font-family: 'Noto Sans TC', sans-serif;
   outline: none; transition: border-color 0.15s;
 }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
-.field select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236e6e6e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 34px; }
-.field select option { background: #181818; }
-.field textarea { resize: none; height: 70px; }
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.input-field:focus { border-color: var(--accent); }
+.emoji-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.emoji-opt {
+  width: 46px; height: 46px; border-radius: 10px;
+  background: var(--surface2); border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; cursor: pointer; transition: all 0.12s;
+}
+.emoji-opt.selected { border-color: var(--accent); background: rgba(255,149,0,0.1); }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; }
 .modal-btn {
-  flex: 1; padding: 13px; border-radius: 12px; font-size: 14px; font-weight: 700;
-  cursor: pointer; border: none; font-family: 'Noto Sans TC', sans-serif; transition: all 0.15s;
+  flex: 1; padding: 13px; border-radius: 12px;
+  font-size: 14px; font-weight: 700; cursor: pointer; border: none;
+  font-family: 'Noto Sans TC', sans-serif; transition: all 0.15s;
 }
-.btn-save   { background: var(--accent); color: #111; }
-.btn-cancel { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.modal-btn.save   { background: var(--accent); color: #111; }
+.modal-btn.cancel { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.modal-btn.delete { background: rgba(255,59,48,0.1); color: var(--red); border: 1px solid rgba(255,59,48,0.2); }
 
-/* ── USER SELECT MODAL ── */
-.user-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.user-item {
-  display: flex; align-items: center; gap: 12px;
-  background: var(--surface2); border: 1.5px solid var(--border);
-  border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: all 0.15s;
-}
-.user-item:active, .user-item.selected { border-color: var(--accent); background: rgba(232,200,74,0.06); }
-.user-av { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; color: #111; flex-shrink: 0; }
-.user-name { font-size: 14px; font-weight: 700; }
-
-/* ── TOAST ── */
+/* ── UNDO TOAST ── */
 .toast {
-  position: fixed; bottom: 80px; left: 50%;
+  position: fixed; bottom: 90px; left: 50%;
   transform: translateX(-50%) translateY(10px);
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 18px; font-size: 13px;
-  z-index: 800; opacity: 0; transition: all 0.25s; white-space: nowrap;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  border-radius: 12px; padding: 10px 16px;
+  font-size: 13px; z-index: 800;
+  opacity: 0; transition: all 0.25s; white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  display: flex; align-items: center; gap: 10px;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast-undo {
+  color: var(--accent); font-weight: 700; cursor: pointer;
+  padding: 2px 6px; border-radius: 5px;
+}
+.toast-undo:active { background: rgba(255,149,0,0.15); }
 
 /* ── LOADING ── */
 .loading-screen {
   position: fixed; inset: 0; background: var(--bg);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; z-index: 999;
 }
 .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-@media (min-width: 500px) { .field-row { grid-template-columns: 1fr 1fr 1fr; } }
+@media (min-width: 480px) {
+  .vendor-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.weekday-filter { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 10px 20px 0; }
+.weekday-filter::-webkit-scrollbar { display: none; }
+.wf-btn {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+  transition: all 0.15s; white-space: nowrap;
+}
+.wf-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(255,149,0,0.1); }
+.weekday-picker { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.weekday-opt {
+  flex: 1; min-width: 36px; padding: 8px 4px;
+  border-radius: 10px; border: 1.5px solid var(--border);
+  background: var(--surface2); color: var(--muted);
+  font-size: 12px; font-weight: 700; text-align: center;
+  cursor: pointer; transition: all 0.15s; user-select: none;
+}
+.weekday-opt.selected {
+  border-color: var(--accent); color: var(--accent);
+  background: rgba(255,149,0,0.1);
+}
 </style>
 </head>
 <body>
 
 <div class="loading-screen" id="loading-screen">
   <div class="spinner"></div>
-  <div style="color:var(--muted);font-size:13px">載入中…</div>
+  <div style="color:var(--muted);font-size:13px">連線中…</div>
 </div>
 
 <!-- ── HEADER ── -->
 <header>
-  <div class="app-icon">🚚</div>
-  <div class="app-title">貨車紀錄本</div>
-  <div class="conn-dot" id="conn-dot"></div>
-  <div class="user-pill" id="user-pill" onclick="openUserModal()">
-    <div class="user-avatar" id="user-avatar">?</div>
-    <span id="user-name-label">選擇使用者</span>
+  <div class="header-top">
+    <div class="app-title">🛒 攤車打卡</div>
+    <div class="header-right">
+      <div class="conn-dot" id="conn-dot"></div>
+      <div class="icon-btn" onclick="openReport()" title="週報表">📊</div>
+      <div class="icon-btn" onclick="openSettings()" title="設定">⚙️</div>
+      <div class="icon-btn" onclick="openAddVendor()" title="新增攤商">＋</div>
+    </div>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-pill">
+      <span style="color:var(--muted);font-size:11px">今日完成</span>
+      <span class="stat-num" id="stat-done">0</span>
+      <span style="color:var(--muted);font-size:11px">攤</span>
+    </div>
+    <div class="stat-pill">
+      <span style="color:var(--muted);font-size:11px">每攤</span>
+      <input class="rate-input" id="rate-input" type="number" inputmode="numeric" value="100" min="1">
+      <span style="color:var(--muted);font-size:11px">元</span>
+    </div>
+    <div class="stat-pill" style="flex:1;justify-content:flex-end">
+      <span style="color:var(--muted);font-size:11px">收入</span>
+      <span class="stat-num stat-money" id="stat-money">$0</span>
+    </div>
   </div>
 </header>
 
-<!-- ── ODOMETER BANNER ── -->
-<div class="odo-banner">
-  <div class="odo-main">
-    <div class="odo-label">目前里程</div>
-    <div class="odo-value" id="odo-val">——<span class="odo-unit">km</span></div>
+<!-- ── DATE TABS ── -->
+<div class="date-tabs" id="date-tabs"></div>
+
+<!-- ── WEEKDAY FILTER ── -->
+<div class="weekday-filter" id="weekday-filter">
+  <button class="wf-btn active" data-dow="all" onclick="setDowFilter('all',this)">全部</button>
+  <button class="wf-btn" data-dow="1" onclick="setDowFilter('1',this)">週一</button>
+  <button class="wf-btn" data-dow="2" onclick="setDowFilter('2',this)">週二</button>
+  <button class="wf-btn" data-dow="3" onclick="setDowFilter('3',this)">週三</button>
+  <button class="wf-btn" data-dow="4" onclick="setDowFilter('4',this)">週四</button>
+  <button class="wf-btn" data-dow="5" onclick="setDowFilter('5',this)">週五</button>
+  <button class="wf-btn" data-dow="6" onclick="setDowFilter('6',this)">週六</button>
+  <button class="wf-btn" data-dow="0" onclick="setDowFilter('0',this)">週日</button>
+</div>
+
+<!-- ── MAIN CONTENT ── -->
+<main>
+  <div class="vendor-grid" id="vendor-grid"></div>
+</main>
+
+<!-- ── BOTTOM SUMMARY ── -->
+<div class="bottom-summary">
+  <div class="summary-text">
+    <div class="summary-done">完成 <span id="sum-done">0</span> 攤</div>
+    <div class="summary-sub" id="sum-sub">今天還沒有打卡紀錄</div>
   </div>
-  <div style="text-align:center">
-    <div class="odo-label">每公里油費</div>
-    <div id="odo-efficiency" style="font-family:'Zen Dots',monospace;font-size:20px;color:var(--blue)">——</div>
-    <div style="font-size:10px;color:var(--muted);margin-top:1px">元/km</div>
-  </div>
-  <div class="odo-next-service">
-    <div class="next-label">下次保養</div>
-    <div id="next-service-val"><span style="color:var(--muted);font-size:13px">未設定</span></div>
+  <div class="summary-earning">
+    <div class="earning-num" id="sum-money">$0</div>
+    <div class="earning-label">預估收入</div>
   </div>
 </div>
 
-<!-- ── TABS ── -->
-<div class="tabs">
-  <div class="tab active" data-tab="fuel" onclick="switchTab('fuel',this)">
-    <span class="tab-icon">⛽</span>加油
-  </div>
-  <div class="tab" data-tab="service" onclick="switchTab('service',this)">
-    <span class="tab-icon">🔧</span>保養
-  </div>
-  <div class="tab" data-tab="expense" onclick="switchTab('expense',this)">
-    <span class="tab-icon">💸</span>其他費用
-  </div>
-  <div class="tab" data-tab="users" onclick="switchTab('users',this)">
-    <span class="tab-icon">👤</span>使用者
-  </div>
-</div>
-
-<main id="main-content"></main>
-
-<!-- ── MODAL: ADD RECORD ── -->
-<div class="modal-overlay" id="record-modal" onclick="closeRecordModal(event)">
+<!-- ── MODAL: VENDOR ── -->
+<div class="modal-overlay" id="vendor-modal" onclick="closeVendorModal(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="record-modal-title">新增紀錄</div>
-    <div id="record-modal-fields"></div>
-    <div class="modal-actions">
-      <button class="modal-btn btn-cancel" onclick="closeRecordModal()">取消</button>
-      <button class="modal-btn btn-save" onclick="saveRecord()">儲存</button>
+    <div class="modal-title" id="vendor-modal-title">新增攤商</div>
+    <div class="modal-field">
+      <label class="input-label">攤商名稱</label>
+      <input class="input-field" id="vm-name" type="text" placeholder="例：滷味攤">
     </div>
-  </div>
-</div>
-
-<!-- ── MODAL: USER SELECT ── -->
-<div class="modal-overlay" id="user-modal" onclick="closeUserModal(event)">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title">選擇使用者</div>
-    <div class="user-list" id="user-list-modal"></div>
-    <div class="field">
-      <label>新增使用者名稱</label>
-      <div style="display:flex;gap:8px">
-        <input id="new-user-input" type="text" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none" placeholder="例：小明">
-        <button onclick="addUser()" style="padding:11px 16px;background:var(--accent);color:#111;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">新增</button>
+    <div class="modal-field">
+      <label class="input-label">代表字（輸入一個字，例：望、餃、蒜）</label>
+      <input class="input-field" id="vm-icon-char" type="text" maxlength="1" placeholder="例：望"
+        style="font-size:36px;text-align:center;height:72px;font-weight:900;letter-spacing:0">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">收費金額（單趟，元）</label>
+      <input class="input-field" id="vm-fee" type="number" inputmode="numeric" placeholder="預設 100 元">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">聯絡人</label>
+      <input class="input-field" id="vm-contact" type="text" placeholder="例：陳老闆">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">聯絡電話</label>
+      <input class="input-field" id="vm-phone" type="tel" placeholder="例：0912-345-678">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">備註</label>
+      <input class="input-field" id="vm-note" type="text" placeholder="例：大台車">
+    </div>
+    <div class="modal-field">
+      <label class="input-label">預設出攤日（可多選）</label>
+      <div class="weekday-picker" id="vm-weekdays">
+        <div class="weekday-opt" data-day="1">一</div>
+        <div class="weekday-opt" data-day="2">二</div>
+        <div class="weekday-opt" data-day="3">三</div>
+        <div class="weekday-opt" data-day="4">四</div>
+        <div class="weekday-opt" data-day="5">五</div>
+        <div class="weekday-opt" data-day="6">六</div>
+        <div class="weekday-opt" data-day="0">日</div>
       </div>
     </div>
+    <div class="modal-actions" id="vendor-modal-actions"></div>
+  </div>
+</div>
+
+<!-- ── MODAL: SETTINGS ── -->
+<div class="modal-overlay" id="settings-modal" onclick="closeSettingsModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ 設定</div>
+    <div class="modal-field">
+      <label class="input-label">每攤收費（元）</label>
+      <input class="input-field" id="sm-rate" type="number" inputmode="numeric" placeholder="例：100">
+    </div>
+    <div style="margin-top:8px;padding:14px;background:var(--surface2);border-radius:10px;font-size:13px;color:var(--muted)">
+      💡 修改後自動套用到今日統計
+    </div>
     <div class="modal-actions">
-      <button class="modal-btn btn-cancel" onclick="closeUserModal()">關閉</button>
+      <button class="modal-btn cancel" onclick="closeSettingsModal()">關閉</button>
+      <button class="modal-btn save" onclick="saveSettings()">儲存</button>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- ── MODAL: CHECKIN ── -->
+<div class="modal-overlay" id="checkin-modal" onclick="closeCheckinModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="ci-title">確認運送</div>
+    <!-- vendor info -->
+    <div style="display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px">
+      <div id="ci-icon" style="font-size:36px;font-weight:900;line-height:1"></div>
+      <div>
+        <div id="ci-name" style="font-size:16px;font-weight:700"></div>
+        <div id="ci-fee-hint" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+    </div>
+    <!-- A → B -->
+    <div style="margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <div>
+          <label class="input-label">出發地點（A）</label>
+          <select class="input-field" id="ci-from-sel" onchange="ciFromSelChange()" style="appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px">
+            <option value="">選擇夜市</option>
+          </select>
+        </div>
+        <div style="font-size:20px;color:var(--accent);text-align:center;margin-top:14px">→</div>
+        <div>
+          <label class="input-label">到達地點（B）</label>
+          <select class="input-field" id="ci-to-sel" onchange="ciToSelChange()" style="appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px">
+            <option value="">選擇夜市</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+        <div>
+          <label class="input-label">或自填</label>
+          <input class="input-field" id="ci-from" type="text" placeholder="自填地點">
+        </div>
+        <div style="margin-top:14px"></div>
+        <div>
+          <label class="input-label">或自填</label>
+          <input class="input-field" id="ci-to" type="text" placeholder="自填地點">
+        </div>
+      </div>
+    </div>
+    <!-- date -->
+    <div class="modal-field">
+      <label class="input-label">日期（預設今天，可補填過去）</label>
+      <input class="input-field" id="ci-date" type="date">
+    </div>
+    <!-- fee -->
+    <div class="modal-field">
+      <label class="input-label">運送金額（元）</label>
+      <input class="input-field" id="ci-fee" type="number" inputmode="numeric" placeholder="100">
+    </div>
+    <!-- note -->
+    <div class="modal-field">
+      <label class="input-label">備註（可留空）</label>
+      <input class="input-field" id="ci-note" type="text" placeholder="例：格位B12">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeCheckinModal()">取消</button>
+      <button class="modal-btn save" id="ci-confirm-btn" onclick="confirmCheckin()" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">確認路線</button>
+    </div>
+    <!-- confirm step -->
+    <div id="ci-confirm-step" style="display:none;margin-top:14px;background:rgba(52,199,89,0.08);border:1px solid rgba(52,199,89,0.25);border-radius:12px;padding:14px">
+      <div style="font-size:13px;color:var(--green);font-weight:700;margin-bottom:8px">✓ 路線確認</div>
+      <div id="ci-confirm-summary" style="font-size:14px;margin-bottom:12px"></div>
+      <button class="modal-btn save" onclick="submitCheckin()" style="width:100%;background:var(--green);color:#111">✓ 完成打卡</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: WEEKLY REPORT ── -->
+<div class="modal-overlay" id="report-modal" onclick="closeReportModal(event)">
+  <div class="modal-sheet" style="max-height:92dvh">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="modal-title" style="margin-bottom:0">📊 週報表</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="reportWeekOffset(-1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:16px">‹</button>
+        <span id="report-week-label" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+        <button onclick="reportWeekOffset(1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:16px">›</button>
+      </div>
+    </div>
+    <div id="report-content"></div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast">
+  <span id="toast-msg"></span>
+  <span class="toast-undo" id="toast-undo" style="display:none" onclick="undoCheckin()">復原</span>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, push, update, remove, serverTimestamp }
+import { getDatabase, ref, onValue, push, update, remove, set, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
@@ -312,14 +494,41 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
-const recordsRef = ref(db, 'truck_records');
-const usersRef   = ref(db, 'truck_users');
+const vendorsRef   = ref(db, 'vendors');
+const checkinsRef  = ref(db, 'checkins');
+const settingsRef  = ref(db, 'settings');
+const marketsRef   = ref(db, 'markets');
+const estLocsRef   = ref(db, 'est_locations');
 
-let records  = {};
-let users    = {};
-let activeTab = 'fuel';
-let currentUser = JSON.parse(localStorage.getItem('truck_user') || 'null');
-let toastTimer  = null;
+let vendors     = {};
+let checkins    = {};
+let markets     = {};
+let estLocs     = {}; // from est_locations (shared with estimate page)
+let settings    = { rate: 100 };
+let activeDate = todayStr();
+let dowFilter  = 'all';
+let lastUndoId = null;
+let toastTimer = null;
+let selectedEmoji = '🛒';
+let editingVendorId = null;
+
+// ── Utils ──
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function fmtDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  const days = ['週日','週一','週二','週三','週四','週五','週六'];
+  return `${days[d.getDay()]} ${d.getMonth()+1}/${d.getDate()}`;
+}
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // ── Connection ──
 onValue(ref(db, '.info/connected'), s => {
@@ -328,371 +537,594 @@ onValue(ref(db, '.info/connected'), s => {
 
 // ── Data ──
 let loaded = 0;
-function checkLoaded() { if (++loaded >= 2) document.getElementById('loading-screen').style.display = 'none'; }
-onValue(recordsRef, s => { records = s.val() || {}; renderMain(); updateOdo(); checkLoaded(); });
-onValue(usersRef,   s => { users   = s.val() || {}; renderUserList(); checkLoaded(); });
+function checkLoaded() { if (++loaded >= 4) document.getElementById('loading-screen').style.display = 'none'; }
 
-// ── User ──
-function updateUserPill() {
-  if (currentUser) {
-    document.getElementById('user-name-label').textContent = currentUser.name;
-    document.getElementById('user-avatar').textContent = currentUser.name.slice(0,1);
-  } else {
-    document.getElementById('user-name-label').textContent = '選擇使用者';
-    document.getElementById('user-avatar').textContent = '?';
-  }
-}
-updateUserPill();
+onValue(vendorsRef,  s => { vendors  = s.val() || {}; render(); checkLoaded(); });
+onValue(checkinsRef, s => { checkins = s.val() || {}; render(); checkLoaded(); });
+onValue(marketsRef,  s => { markets  = s.val() || {}; checkLoaded(); });
+onValue(estLocsRef,  s => { estLocs  = s.val() || {}; });
+onValue(settingsRef, s => {
+  const v = s.val() || {};
+  settings.rate = v.rate || 100;
+  document.getElementById('rate-input').value = settings.rate;
+  updateStats();
+  checkLoaded();
+});
 
-function renderUserList() {
-  const el  = document.getElementById('user-list-modal');
-  const arr = Object.entries(users).map(([id,u])=>({id,...u}));
-  if (!arr.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">還沒有使用者，請在下方新增</div>'; return; }
-  el.innerHTML = arr.map(u => `
-    <div class="user-item ${currentUser?.id===u.id?'selected':''}" onclick="selectUser('${u.id}','${u.name}')">
-      <div class="user-av">${u.name.slice(0,1)}</div>
-      <div class="user-name">${esc(u.name)}</div>
-      <button onclick="event.stopPropagation();deleteUser('${u.id}')" style="margin-left:auto;background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px">✕</button>
-    </div>`).join('');
-}
-
-window.selectUser = function(id, name) {
-  currentUser = { id, name };
-  localStorage.setItem('truck_user', JSON.stringify(currentUser));
-  updateUserPill();
-  renderUserList();
-  closeUserModal();
-  showToast(`👤 ${name}`);
-};
-
-window.addUser = async function() {
-  const name = document.getElementById('new-user-input').value.trim();
-  if (!name) return;
-  await push(usersRef, { name });
-  document.getElementById('new-user-input').value = '';
-  showToast('✅ 使用者已新增');
-};
-
-window.deleteUser = async function(id) {
-  if (!confirm('確定刪除此使用者？')) return;
-  await remove(ref(db,'truck_users/'+id));
-  if (currentUser?.id === id) {
-    currentUser = null;
-    localStorage.removeItem('truck_user');
-    updateUserPill();
-  }
-};
-
-// ── ODO ──
-function updateOdo() {
-  const arr = Object.values(records).filter(r => r.odometer);
-  const maxOdo = arr.length ? Math.max(...arr.map(r=>Number(r.odometer)||0)) : null;
-  const minOdo = arr.length ? Math.min(...arr.map(r=>Number(r.odometer)||0)) : null;
-  const odoEl = document.getElementById('odo-val');
-  if (maxOdo) odoEl.innerHTML = `${maxOdo.toLocaleString()}<span class="odo-unit"> km</span>`;
-  else odoEl.innerHTML = `——<span class="odo-unit"> km</span>`;
-
-  // cost per km: total fuel cost / total km driven
-  const fuelRecs = Object.values(records).filter(r => r.type==='fuel' && r.amount && r.odometer);
-  const effEl = document.getElementById('odo-efficiency');
-  if (fuelRecs.length >= 2) {
-    const sorted     = fuelRecs.sort((a,b)=>Number(a.odometer)-Number(b.odometer));
-    const kmDriven   = Number(sorted[sorted.length-1].odometer) - Number(sorted[0].odometer);
-    const totalCost  = sorted.reduce((s,r)=>s+(Number(r.amount)||0), 0);
-    if (kmDriven > 0 && totalCost > 0) {
-      effEl.textContent = (totalCost / kmDriven).toFixed(1);
-    } else { effEl.textContent = '——'; }
-  } else { effEl.textContent = fuelRecs.length===1?'需2筆以上':'——'; }
-
-  // next service – check both date and km
-  const services = Object.values(records).filter(r=>r.type==='service'&&(r.nextOdo||r.nextDate));
-  const nextEl = document.getElementById('next-service-val');
-  if (!services.length) {
-    nextEl.innerHTML = '<span style="color:var(--muted);font-size:13px">未設定</span>';
-  } else {
-    const latest   = services.sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
-    const today    = new Date(); today.setHours(0,0,0,0);
-    let lines = [];
-    // km warning
-    if (latest.nextOdo) {
-      const next = Number(latest.nextOdo);
-      const diff = maxOdo ? next - maxOdo : null;
-      const kmColor = (diff !== null && diff <= 500) ? 'var(--red)' : 'var(--green)';
-      const kmExtra = (diff !== null && diff <= 500) ? ` <span style="font-size:10px">(剩${diff}km)</span>` : '';
-      lines.push(`<div style="font-family:'Zen Dots',monospace;font-size:14px;color:${kmColor}">${next.toLocaleString()} km${kmExtra}</div>`);
-    }
-    // date warning
-    if (latest.nextDate) {
-      const nd   = new Date(latest.nextDate + 'T00:00:00');
-      const days = Math.round((nd - today) / 86400000);
-      const dateColor = days <= 14 ? 'var(--red)' : 'var(--green)';
-      const mo   = nd.getMonth()+1; const d = nd.getDate();
-      const dateExtra = days <= 14 ? ` <span style="font-size:10px">(剩${days}天)</span>` : '';
-      lines.push(`<div style="font-family:'Zen Dots',monospace;font-size:14px;color:${dateColor}">${mo}/${d}${dateExtra}</div>`);
-    }
-    nextEl.innerHTML = lines.join('') || '<span style="color:var(--muted);font-size:13px">未設定</span>';
-  }
-}
-
-// ── TABS ──
-window.switchTab = function(tab, el) {
-  activeTab = tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  renderMain();
-};
+// ── Rate input inline ──
+document.getElementById('rate-input').addEventListener('change', e => {
+  const val = parseInt(e.target.value) || 100;
+  settings.rate = val;
+  update(settingsRef, { rate: val });
+  updateStats();
+});
 
 // ── RENDER ──
-function renderMain() {
-  const main = document.getElementById('main-content');
-  if (activeTab === 'users') { renderUsersTab(main); return; }
+function render() {
+  renderDateTabs();
+  renderGrid();
+  updateStats();
+}
 
-  const typeMap = { fuel:'⛽ 加油', service:'🔧 保養', expense:'💸 其他費用' };
-  const arr = Object.entries(records)
-    .map(([id,r])=>({id,...r}))
-    .filter(r => r.type === activeTab)
-    .sort((a,b)=>(b.ts||0)-(a.ts||0));
+function renderDateTabs() {
+  // collect all dates from checkins + today
+  const dates = new Set([todayStr()]);
+  Object.values(checkins).forEach(c => { if (c.date) dates.add(c.date); });
+  const sorted = [...dates].sort().reverse();
 
-  // stats
-  const totalAmt = arr.reduce((s,r)=>s+(Number(r.amount)||0),0);
-  const statsHtml = activeTab === 'fuel' ? `
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-val">${arr.length}</div><div class="stat-lbl">加油次數</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-val">$${totalAmt.toLocaleString()}</div><div class="stat-lbl">總油費</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-val">${arr.reduce((s,r)=>s+(Number(r.liters)||0),0).toFixed(1)}</div><div class="stat-lbl">總公升</div>
-      </div>
-    </div>` : `
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-val">${arr.length}</div><div class="stat-lbl">紀錄筆數</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-val">$${totalAmt.toLocaleString()}</div><div class="stat-lbl">總費用</div>
-      </div>
+  const tabs = document.getElementById('date-tabs');
+  tabs.innerHTML = sorted.map(d => `
+    <button class="date-tab ${d === activeDate ? 'active' : ''}" onclick="setActiveDate('${d}')">
+      ${d === todayStr() ? '今天' : fmtDate(d)}
+    </button>
+  `).join('');
+}
+
+function renderGrid() {
+  const grid = document.getElementById('vendor-grid');
+  const arr  = Object.entries(vendors).map(([id,v]) => ({ id, ...v }));
+
+  if (!arr.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">🛒</div>
+      還沒有攤商<br>點右上角 ＋ 新增
     </div>`;
+    return;
+  }
 
-  const listHtml = arr.length ? arr.map(r => {
-    const dotClass = { fuel:'dot-fuel', service:'dot-service', expense:'dot-expense' }[r.type];
-    const icon     = { fuel:'⛽', service:'🔧', expense:'💸' }[r.type];
-    let title = '', meta = [];
-    if (r.type==='fuel') {
-      title = `加油 ${r.liters||'?'} 公升`;
-      if (r.odometer) meta.push(`📍 ${Number(r.odometer).toLocaleString()} km`);
-    } else if (r.type==='service') {
-      title = r.item || '保養';
-      if (r.odometer) meta.push(`📍 ${Number(r.odometer).toLocaleString()} km`);
-      if (r.nextOdo)  meta.push(`🔔 下次 ${Number(r.nextOdo).toLocaleString()} km`);
-      if (r.nextDate) { const nd=new Date(r.nextDate+'T00:00:00'); meta.push(`📅 下次 ${nd.getMonth()+1}/${nd.getDate()}`); }
-    } else {
-      title = r.item || '費用';
-    }
-    if (r.note)  meta.push(`📝 ${r.note}`);
-    if (r.date)  meta.push(r.date);
+  // apply weekday filter
+  const filtered = dowFilter === 'all' ? arr : arr.filter(v =>
+    v.days && v.days.map(String).includes(dowFilter)
+  );
+  const displayArr = filtered.length ? filtered : arr; // fallback if none match
+  if (dowFilter !== 'all' && !filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">📭</div>
+      這天沒有設定出攤的攤商
+    </div>`;
+    return;
+  }
+
+  const activeDow = String(new Date(activeDate + 'T00:00:00').getDay());
+  // find checkin for each vendor on activeDate
+  grid.innerHTML = displayArr.map(v => {
+    const checkin = Object.values(checkins).find(c => c.vendorId === v.id && c.date === activeDate);
+    const done = !!checkin;
+    const scheduled = v.days && v.days.map(String).includes(activeDow);
+    const timeStr = checkin ? fmtTime(checkin.ts) : '';
     return `
-    <div class="record-card">
-      <div class="record-type-dot ${dotClass}">${icon}</div>
-      <div class="record-body">
-        <div class="record-title">${esc(title)}</div>
-        <div class="record-meta">${meta.map(m=>`<span>${esc(m)}</span>`).join('')}</div>
-        ${r.amount ? `<div class="record-amount">$${Number(r.amount).toLocaleString()}</div>` : ''}
-        <div class="record-user">👤 ${esc(r.userName||'未知')}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-        <button class="record-del" style="color:var(--blue);font-size:12px;padding:3px 8px;border-radius:5px;background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.2)" onclick="editRecord('${r.id}')">編輯</button>
-        <button class="record-del" onclick="delRecord('${r.id}')">✕</button>
-      </div>
+    <div class="vendor-card ${done ? 'done' : ''}"
+      data-vendor-id="${v.id}"
+      ontouchstart="vcTouchStart(event,'${v.id}')"
+      ontouchend="vcTouchEnd(event,'${v.id}')"
+      ontouchcancel="vcTouchCancel('${v.id}')"
+      oncontextmenu="vcRightClick(event,'${v.id}')"
+      onmousedown="vcMouseDown(event,'${v.id}')"
+      onmouseup="vcMouseUp('${v.id}')"
+      onmouseleave="vcMouseUp('${v.id}')"
+      onclick="vcClick('${v.id}')">
+      <div class="done-badge">✓</div>
+      ${scheduled && !done ? `<div style="position:absolute;top:8px;left:8px;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px var(--accent)"></div>` : ''}
+      <div class="vendor-icon" style="font-size:52px;font-weight:900;line-height:1;color:var(--text)">${esc(v.icon || v.name.slice(0,1))}</div>
+      <div class="vendor-name">${esc(v.name)}</div>
+      <div style="font-size:11px;color:var(--muted)">$${v.fee != null ? v.fee : 100}</div>
+      ${v.days && v.days.length ? `<div style="font-size:10px;color:var(--accent);margin-top:2px">${['日','一','二','三','四','五','六'].filter((_,i)=>v.days.includes(String(i)||i)).map(d=>'週'+d).join(' ')}</div>` : ''}
+      ${done ? `<div class="vendor-time">✓ ${timeStr}</div>` : ''}
+      ${v.contact || v.phone ? `<div class="vendor-contact">${v.contact ? esc(v.contact) : ''}${v.contact && v.phone ? ' · ' : ''}${v.phone ? `<a href="tel:${esc(v.phone)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">📞 ${esc(v.phone)}</a>` : ''}</div>` : ''}
     </div>`;
-  }).join('') : `<div class="empty-state"><div class="empty-icon">${{fuel:'⛽',service:'🔧',expense:'💸'}[activeTab]}</div>還沒有${typeMap[activeTab]}紀錄</div>`;
-
-  const btnLabel = { fuel:'＋ 新增加油紀錄', service:'＋ 新增保養紀錄', expense:'＋ 新增費用紀錄' }[activeTab];
-  main.innerHTML = `
-    <button class="add-btn" onclick="openRecordModal()">${btnLabel}</button>
-    ${statsHtml}
-    <div class="record-list">${listHtml}</div>`;
+  }).join('');
 }
 
-function renderUsersTab(main) {
-  const arr = Object.entries(users).map(([id,u])=>({id,...u}));
-  main.innerHTML = `
-    <div style="margin-bottom:14px">
-      <div style="font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px">使用者管理</div>
-      <div class="record-list">
-        ${arr.length ? arr.map(u=>`
-          <div class="record-card">
-            <div class="record-type-dot" style="background:rgba(232,200,74,0.1);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:var(--accent)">${u.name.slice(0,1)}</div>
-            <div class="record-body"><div class="record-title">${esc(u.name)}</div></div>
-            <button class="record-del" onclick="deleteUser('${u.id}')">✕</button>
-          </div>`).join('') : '<div class="empty-state"><div class="empty-icon">👤</div>還沒有使用者</div>'}
-      </div>
-    </div>
-    <div class="field">
-      <label>新增使用者</label>
-      <div style="display:flex;gap:8px">
-        <input id="new-user-tab" type="text" style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none" placeholder="輸入姓名">
-        <button onclick="addUserTab()" style="padding:11px 18px;background:var(--accent);color:#111;border:none;border-radius:10px;font-size:15px;font-weight:900;cursor:pointer">新增</button>
-      </div>
-    </div>`;
+function updateStats() {
+  const todayCheckins = Object.values(checkins).filter(c => c.date === activeDate);
+  const count = todayCheckins.length;
+  // 用實際打卡時輸入的金額加總
+  const money = todayCheckins.reduce((sum, c) => {
+    if (c.fee != null && c.fee > 0) return sum + Number(c.fee);
+    const v = vendors[c.vendorId];
+    return sum + (v && v.fee != null ? Number(v.fee) : (settings.rate || 100));
+  }, 0);
+
+  document.getElementById('stat-done').textContent  = count;
+  document.getElementById('stat-money').textContent = '$' + money.toLocaleString();
+  document.getElementById('sum-done').textContent   = count;
+  document.getElementById('sum-money').textContent  = '$' + money.toLocaleString();
+
+  const isToday = activeDate === todayStr();
+  if (count === 0) {
+    document.getElementById('sum-sub').textContent = isToday ? '今天還沒有打卡紀錄' : '這天沒有打卡紀錄';
+  } else {
+    const times = Object.values(checkins)
+      .filter(c => c.date === activeDate && c.ts)
+      .map(c => c.ts).sort();
+    const first = times.length ? fmtTime(times[0]) : '';
+    const last  = times.length ? fmtTime(times[times.length-1]) : '';
+    const avgFee = count > 0 ? Math.round(money / count) : 0;
+    document.getElementById('sum-sub').textContent =
+      `${first} – ${last}・共 ${count} 攤・平均 $${avgFee}`;
+  }
 }
-window.addUserTab = async function() {
-  const name = document.getElementById('new-user-tab').value.trim();
-  if (!name) return;
-  await push(usersRef, { name });
-  document.getElementById('new-user-tab').value = '';
-  showToast('✅ 使用者已新增');
+
+// ── Date tab ──
+window.setActiveDate = function(d) {
+  activeDate = d;
+  render();
 };
 
-// ── RECORD MODAL ──
-window.openRecordModal = function() {
-  if (!currentUser) { alert('請先選擇使用者！'); openUserModal(); return; }
-  const today = new Date().toISOString().slice(0,10);
-  const titles = { fuel:'⛽ 新增加油紀錄', service:'🔧 新增保養紀錄', expense:'💸 新增費用紀錄' };
-  document.getElementById('record-modal-title').textContent = titles[activeTab];
+// ── Weekday filter ──
+window.setDowFilter = function(dow, el) {
+  dowFilter = dow;
+  document.querySelectorAll('.wf-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+};
 
-  let fields = `<div class="field-row">
-    <div class="field"><label>日期</label><input id="rf-date" type="date" value="${today}"></div>
-    <div class="field"><label>里程 (km)</label><input id="rf-odo" type="number" inputmode="numeric" placeholder="例：2795"></div>
-  </div>`;
+// Auto-highlight today's weekday button on load
+(function() {
+  const todayDow = String(new Date().getDay());
+  const btn = document.querySelector(`.wf-btn[data-dow="${todayDow}"]`);
+  if (btn) {
+    document.querySelectorAll('.wf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    dowFilter = todayDow;
+  }
+})();
 
-  if (activeTab === 'fuel') {
-    fields += `<div class="field-row">
-      <div class="field"><label>加油量 (公升)</label><input id="rf-liters" type="number" inputmode="decimal" step="0.1" placeholder="例：30.5"></div>
-      <div class="field"><label>金額 (元)</label><input id="rf-amount" type="number" inputmode="numeric" placeholder="例：1500"></div>
+// ── Long press ──
+const lpTimers = {};
+const mpTimers = {}; // mouse press timers
+let wasLongPress = false;
+
+// Desktop: right-click
+window.vcRightClick = function(e, id) {
+  e.preventDefault();
+  wasLongPress = true;
+  openEditVendor(id);
+};
+
+// Desktop: mouse long-press (hold 600ms)
+window.vcMouseDown = function(e, id) {
+  if (e.button !== 0) return; // left button only
+  mpTimers[id] = setTimeout(() => {
+    wasLongPress = true;
+    delete mpTimers[id];
+    document.querySelector(`[data-vendor-id="${id}"]`)?.classList.add('long-pressing');
+    openEditVendor(id);
+  }, 600);
+};
+window.vcMouseUp = function(id) {
+  if (mpTimers[id]) { clearTimeout(mpTimers[id]); delete mpTimers[id]; }
+  document.querySelector(`[data-vendor-id="${id}"]`)?.classList.remove('long-pressing');
+};
+window.vcTouchStart = function(e, id) {
+  wasLongPress = false;
+  lpTimers[id] = setTimeout(() => {
+    wasLongPress = true;
+    clearTimeout(lpTimers[id]);
+    delete lpTimers[id];
+    document.querySelector(`[data-vendor-id="${id}"]`)?.classList.add('long-pressing');
+    openEditVendor(id);
+  }, 600);
+};
+window.vcTouchEnd = function(e, id) {
+  if (lpTimers[id]) { clearTimeout(lpTimers[id]); delete lpTimers[id]; }
+  document.querySelector(`[data-vendor-id="${id}"]`)?.classList.remove('long-pressing');
+};
+window.vcTouchCancel = function(id) {
+  if (lpTimers[id]) { clearTimeout(lpTimers[id]); delete lpTimers[id]; }
+  wasLongPress = false;
+  document.querySelector(`[data-vendor-id="${id}"]`)?.classList.remove('long-pressing');
+};
+
+// ── CHECK IN MODAL ──
+let checkinVendorId = null;
+
+window.vcClick = function(id) {
+  if (wasLongPress) { wasLongPress = false; return; }
+  const existing = Object.entries(checkins).filter(([,c]) => c.vendorId === id && c.date === activeDate);
+  if (existing.length > 0) {
+    // already has checkin(s) - offer choice
+    const name = vendors[id]?.name || '';
+    const count = existing.length;
+    const choice = confirm(`「${name}」今天已有 ${count} 筆打卡紀錄
+
+確定 → 新增第 ${count+1} 次打卡（來回/多次）
+取消 → 不動作`);
+    if (choice) openCheckinModal(id);
+    return;
+  }
+  openCheckinModal(id);
+};
+
+// getMarketNames: 從 est_locations 讀取（與估價表共用）
+function getMarketNames() {
+  const arr = Object.values(estLocs).map(m => m.name).filter(Boolean).sort((a,b)=>a.localeCompare(b,'zh'));
+  return arr.length ? arr : ['花園夜市','武聖夜市','小北成功夜市','永大夜市','新永華夜市','龍埔夜市','大東東夜市','新同安夜市','鹽行夜市'];
+}
+
+function buildMarketOptions() {
+  return '<option value="">選擇夜市</option>' +
+    getMarketNames().map(m => `<option value="${m}">${m}</option>`).join('') +
+    '<option value="__custom__">自填地點…</option>';
+}
+
+window.ciFromSelChange = function() {
+  const val = document.getElementById('ci-from-sel').value;
+  document.getElementById('ci-from').value = val === '__custom__' ? '' : val;
+  document.getElementById('ci-from').style.display = val === '__custom__' ? 'block' : 'none';
+  if (val === '__custom__') document.getElementById('ci-from').focus();
+};
+window.ciToSelChange = function() {
+  const val = document.getElementById('ci-to-sel').value;
+  document.getElementById('ci-to').value = val === '__custom__' ? '' : val;
+  document.getElementById('ci-to').style.display = val === '__custom__' ? 'block' : 'none';
+  if (val === '__custom__') document.getElementById('ci-to').focus();
+};
+
+function openCheckinModal(id) {
+  checkinVendorId = id;
+  const v = vendors[id] || {};
+  document.getElementById('ci-icon').textContent = v.icon || v.name?.slice(0,1) || '🛒';
+  document.getElementById('ci-name').textContent = v.name || '';
+  // 優先用上次實際打卡的金額，沒有則用攤商預設費用
+  const lastCheckin = Object.values(checkins)
+    .filter(c => c.vendorId === id && c.fee)
+    .sort((a,b) => (b.ts||0)-(a.ts||0))[0];
+  const lastFee = lastCheckin ? lastCheckin.fee : (v.fee != null ? v.fee : 100);
+  document.getElementById('ci-fee-hint').textContent = `上次金額：$${lastFee}`;
+  document.getElementById('ci-fee').value  = lastFee;
+  document.getElementById('ci-note').value = '';
+  document.getElementById('ci-date').value = activeDate;
+  // reset selects
+  const opts = buildMarketOptions();
+  document.getElementById('ci-from-sel').innerHTML = opts;
+  document.getElementById('ci-to-sel').innerHTML   = opts;
+  document.getElementById('ci-from').value = '';
+  document.getElementById('ci-to').value   = '';
+  document.getElementById('ci-from').style.display = 'none';
+  document.getElementById('ci-to').style.display   = 'none';
+  document.getElementById('ci-confirm-step').style.display = 'none';
+  document.getElementById('ci-confirm-btn').style.background = 'var(--surface2)';
+  document.getElementById('ci-confirm-btn').style.color = 'var(--muted)';
+  document.getElementById('checkin-modal').classList.add('open');
+}
+
+window.closeCheckinModal = function(e) {
+  if (e && e.target !== document.getElementById('checkin-modal')) return;
+  document.getElementById('checkin-modal').classList.remove('open');
+};
+
+window.confirmCheckin = function() {
+  const fromSel = document.getElementById('ci-from-sel').value;
+  const toSel   = document.getElementById('ci-to-sel').value;
+  const from = (fromSel && fromSel !== '__custom__') ? fromSel : document.getElementById('ci-from').value.trim();
+  const to   = (toSel   && toSel   !== '__custom__') ? toSel   : document.getElementById('ci-to').value.trim();
+  const fee  = document.getElementById('ci-fee').value;
+  if (!from || !to) { alert('請選擇或填寫出發和到達地點'); return; }
+  if (!fee)         { alert('請填寫運送金額'); return; }
+  const summary = document.getElementById('ci-confirm-summary');
+  summary.innerHTML = `<span style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-weight:700">${from}</span> <span style="color:var(--accent)">→</span> <span style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-weight:700">${to}</span><br><span style="font-family:'Zen Dots',monospace;font-size:18px;color:var(--accent);margin-top:6px;display:block">$${Number(fee).toLocaleString()}</span>`;
+  document.getElementById('ci-confirm-step').style.display = 'block';
+  document.getElementById('ci-confirm-btn').style.background = 'var(--accent)';
+  document.getElementById('ci-confirm-btn').style.color = '#111';
+};
+
+window.submitCheckin = async function() {
+  const id  = checkinVendorId;
+  const fromSel = document.getElementById('ci-from-sel').value;
+  const toSel   = document.getElementById('ci-to-sel').value;
+  const from = (fromSel && fromSel !== '__custom__') ? fromSel : document.getElementById('ci-from').value.trim();
+  const to   = (toSel   && toSel   !== '__custom__') ? toSel   : document.getElementById('ci-to').value.trim();
+  const fee  = Number(document.getElementById('ci-fee').value) || 0;
+  const note = document.getElementById('ci-note').value.trim();
+  const date = document.getElementById('ci-date').value || activeDate;
+  const vData = vendors[id] || {};
+  const now   = new Date();
+  const result = await push(checkinsRef, {
+    vendorId: id, vendorName: vData.name || '',
+    from, to, fee, note,
+    date, ts: now.getTime()
+  });
+  lastUndoId = result.key;
+  document.getElementById('checkin-modal').classList.remove('open');
+  showToast(`✓ ${vData.name} 打卡完成`, true);
+};
+
+// ── WEEKLY REPORT ──
+let reportOffset = 0; // 0=this week, -1=last week, etc.
+
+function getWeekRange(offset) {
+  const now = new Date();
+  const dow  = now.getDay(); // 0=Sun
+  const mon  = new Date(now); mon.setDate(now.getDate() - ((dow+6)%7) + offset*7); mon.setHours(0,0,0,0);
+  const sun  = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+  return { mon, sun };
+}
+
+function isoDate(d) { return d.toISOString().slice(0,10); }
+
+window.openReport = function() {
+  reportOffset = 0;
+  renderReport();
+  document.getElementById('report-modal').classList.add('open');
+};
+
+window.closeReportModal = function(e) {
+  if (e && e.target !== document.getElementById('report-modal')) return;
+  document.getElementById('report-modal').classList.remove('open');
+};
+
+window.reportWeekOffset = function(dir) {
+  reportOffset += dir;
+  renderReport();
+};
+
+function renderReport() {
+  const { mon, sun } = getWeekRange(reportOffset);
+  const DAYS = ['日','一','二','三','四','五','六'];
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  const label = reportOffset === 0 ? `本週（${fmt(mon)}－${fmt(sun)}）`
+              : reportOffset === -1 ? `上週（${fmt(mon)}－${fmt(sun)}）`
+              : `${fmt(mon)}－${fmt(sun)}`;
+  document.getElementById('report-week-label').textContent = label;
+
+  // collect checkins in range
+  const arr = Object.values(checkins).filter(c => {
+    if (!c.date) return false;
+    const d = new Date(c.date + 'T00:00:00');
+    return d >= mon && d <= sun;
+  }).sort((a,b) => (a.ts||0) - (b.ts||0));
+
+  if (!arr.length) {
+    document.getElementById('report-content').innerHTML =
+      '<div style="text-align:center;padding:32px;color:var(--muted)">這週沒有打卡紀錄</div>';
+    return;
+  }
+
+  // group by date
+  const byDate = {};
+  arr.forEach(c => { if (!byDate[c.date]) byDate[c.date] = []; byDate[c.date].push(c); });
+
+  const totalFee   = arr.reduce((s,c) => s + (Number(c.fee)||0), 0);
+  const totalCount = arr.length;
+
+  let html = `
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+        <div style="font-family:'Zen Dots',monospace;font-size:22px;color:var(--accent)">${totalCount}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">總攤數</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+        <div style="font-family:'Zen Dots',monospace;font-size:22px;color:var(--green)">$${totalFee.toLocaleString()}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">總金額</div>
+      </div>
     </div>`;
-  } else if (activeTab === 'service') {
-    fields += `<div class="field"><label>保養項目</label><input id="rf-item" type="text" placeholder="例：機油更換、輪胎"></div>
-    <div class="field-row">
-      <div class="field"><label>金額 (元)</label><input id="rf-amount" type="number" inputmode="numeric" placeholder="例：2000"></div>
-      <div class="field"><label>下次保養里程 (km)</label><input id="rf-next-odo" type="number" inputmode="numeric" placeholder="例：8000"></div>
-      <div class="field"><label>下次保養日期</label><input id="rf-next-date" type="date"></div>
+
+  Object.entries(byDate).sort().forEach(([date, items]) => {
+    const d   = new Date(date + 'T00:00:00');
+    const dayFee = items.reduce((s,c)=>s+(Number(c.fee)||0),0);
+    html += `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between">
+        <span>週${DAYS[d.getDay()]} ${fmt(d)}</span>
+        <span style="color:var(--accent)">$${dayFee.toLocaleString()} / ${items.length}攤</span>
+      </div>
+      ${items.map(c => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+          <div style="font-size:24px;font-weight:900;width:32px;text-align:center;flex-shrink:0">${esc(vendors[c.vendorId]?.icon || c.vendorName?.slice(0,1) || '?')}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700">${esc(c.vendorName)}</div>
+            ${c.from && c.to ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(c.from)} → ${esc(c.to)}</div>` : ''}
+            ${c.note ? `<div style="font-size:11px;color:var(--muted)">📝 ${esc(c.note)}</div>` : ''}
+          </div>
+          <div style="font-family:'Zen Dots',monospace;font-size:14px;color:var(--accent);flex-shrink:0;margin-right:4px">$${Number(c.fee||0).toLocaleString()}</div>
+          <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+            <button onclick="editCheckinFromReport('${c.id}')" style="background:rgba(74,158,255,0.1);color:#4a9eff;border:1px solid rgba(74,158,255,0.25);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:'Noto Sans TC',sans-serif">編輯</button>
+            <button onclick="deleteCheckinFromReport('${c.id}')" style="background:rgba(255,59,48,0.08);color:#ff4444;border:1px solid rgba(255,59,48,0.2);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:'Noto Sans TC',sans-serif">刪除</button>
+          </div>
+        </div>`).join('')}
     </div>`;
-  } else {
-    fields += `<div class="field"><label>費用項目</label><input id="rf-item" type="text" placeholder="例：停車費、過路費"></div>
-    <div class="field"><label>金額 (元)</label><input id="rf-amount" type="number" inputmode="numeric" placeholder="例：100"></div>`;
+  });
+
+  document.getElementById('report-content').innerHTML = html;
+}
+
+window.deleteCheckinFromReport = async function(id) {
+  if (!confirm('確定刪除這筆打卡紀錄？')) return;
+  await remove(ref(db, 'checkins/' + id));
+  showToast('🗑 已刪除', false);
+  renderReport();
+};
+
+window.editCheckinFromReport = function(id) {
+  const c = checkins[id]; if (!c) return;
+  // close report modal, open checkin modal pre-filled
+  document.getElementById('report-modal').classList.remove('open');
+  checkinVendorId = c.vendorId;
+  const v = vendors[c.vendorId] || {};
+  document.getElementById('ci-icon').textContent = v.icon || c.vendorName?.slice(0,1) || '?';
+  document.getElementById('ci-name').textContent = c.vendorName || '';
+  document.getElementById('ci-fee-hint').textContent = `目前金額：$${c.fee||0}`;
+  document.getElementById('ci-fee').value  = c.fee || 0;
+  document.getElementById('ci-note').value = c.note || '';
+  document.getElementById('ci-date').value = c.date || activeDate;
+  const opts = buildMarketOptions();
+  document.getElementById('ci-from-sel').innerHTML = opts;
+  document.getElementById('ci-to-sel').innerHTML   = opts;
+  // pre-select from/to
+  document.getElementById('ci-from-sel').value = c.from || '';
+  document.getElementById('ci-to-sel').value   = c.to   || '';
+  document.getElementById('ci-from').value = '';
+  document.getElementById('ci-to').value   = '';
+  document.getElementById('ci-from').style.display = 'none';
+  document.getElementById('ci-to').style.display   = 'none';
+  document.getElementById('ci-confirm-step').style.display = 'none';
+  document.getElementById('ci-confirm-btn').style.background = 'var(--surface2)';
+  document.getElementById('ci-confirm-btn').style.color = 'var(--muted)';
+  // override submit to update instead of create
+  const submitBtn = document.querySelector('#checkin-modal .cta-btn.green');
+  if (submitBtn) {
+    submitBtn.textContent = '✓ 更新打卡';
+    submitBtn.onclick = async () => {
+      const fromSel = document.getElementById('ci-from-sel').value;
+      const toSel   = document.getElementById('ci-to-sel').value;
+      const from = (fromSel && fromSel !== '__custom__') ? fromSel : document.getElementById('ci-from').value.trim();
+      const to   = (toSel   && toSel   !== '__custom__') ? toSel   : document.getElementById('ci-to').value.trim();
+      const fee  = Number(document.getElementById('ci-fee').value) || 0;
+      const note = document.getElementById('ci-note').value.trim();
+      const date = document.getElementById('ci-date').value || activeDate;
+      await update(ref(db, 'checkins/' + id), { from, to, fee, note, date });
+      document.getElementById('checkin-modal').classList.remove('open');
+      // restore submit button
+      submitBtn.textContent = '✓ 完成打卡';
+      submitBtn.onclick = submitCheckin;
+      showToast('✏️ 打卡已更新', false);
+      renderReport();
+      document.getElementById('report-modal').classList.add('open');
+    };
   }
-  fields += `<div class="field"><label>備註（可留空）</label><textarea id="rf-note" placeholder="備註說明…"></textarea></div>`;
-  document.getElementById('record-modal-fields').innerHTML = fields;
-  document.getElementById('record-modal').classList.add('open');
+  document.getElementById('checkin-modal').classList.add('open');
 };
 
-window.closeRecordModal = function(e) {
-  if (e && e.target !== document.getElementById('record-modal')) return;
-  document.getElementById('record-modal').classList.remove('open');
-};
-
-window.saveRecord = async function() {
-  const date   = document.getElementById('rf-date')?.value || '';
-  const odo    = document.getElementById('rf-odo')?.value || '';
-  const amount = document.getElementById('rf-amount')?.value || '';
-  const note   = document.getElementById('rf-note')?.value.trim() || '';
-  const data   = { type: activeTab, date, odometer: odo, amount, note, userName: currentUser.name, userId: currentUser.id, ts: Date.now() };
-
-  if (activeTab === 'fuel') {
-    data.liters = document.getElementById('rf-liters')?.value || '';
-    if (!data.liters && !amount) { alert('請填寫加油量或金額'); return; }
-  } else if (activeTab === 'service') {
-    data.item     = document.getElementById('rf-item')?.value.trim() || '';
-    data.nextOdo  = document.getElementById('rf-next-odo')?.value || '';
-    data.nextDate = document.getElementById('rf-next-date')?.value || '';
-    if (!data.item) { alert('請填寫保養項目'); return; }
-  } else {
-    data.item = document.getElementById('rf-item')?.value.trim() || '';
-    if (!data.item) { alert('請填寫費用項目'); return; }
-  }
-
-  await push(recordsRef, data);
-  document.getElementById('record-modal').classList.remove('open');
-  showToast('✅ 紀錄已儲存');
-};
-
-window.editRecord = function(id) {
-  const r = records[id]; if (!r) return;
-  // reuse openRecordModal but pre-fill fields
-  activeTab = r.type;
-  // switch tab UI
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelector(`.tab[data-tab="${r.type}"]`)?.classList.add('active');
-  openRecordModal();
-  // pre-fill after modal renders
-  setTimeout(() => {
-    if (document.getElementById('rf-date'))    document.getElementById('rf-date').value    = r.date    || '';
-    if (document.getElementById('rf-odo'))     document.getElementById('rf-odo').value     = r.odometer|| '';
-    if (document.getElementById('rf-amount'))  document.getElementById('rf-amount').value  = r.amount  || '';
-    if (document.getElementById('rf-note'))    document.getElementById('rf-note').value    = r.note    || '';
-    if (r.type === 'fuel') {
-      if (document.getElementById('rf-liters')) document.getElementById('rf-liters').value = r.liters  || '';
-    } else if (r.type === 'service') {
-      if (document.getElementById('rf-item'))     document.getElementById('rf-item').value     = r.item    || '';
-      if (document.getElementById('rf-next-odo')) document.getElementById('rf-next-odo').value = r.nextOdo || '';
-      if (document.getElementById('rf-next-date'))document.getElementById('rf-next-date').value= r.nextDate|| '';
-    } else {
-      if (document.getElementById('rf-item')) document.getElementById('rf-item').value = r.item || '';
-    }
-    // change modal title and save button to update mode
-    document.getElementById('record-modal-title').textContent =
-      { fuel:'✏️ 編輯加油紀錄', service:'✏️ 編輯保養紀錄', expense:'✏️ 編輯費用紀錄' }[r.type];
-    // override save button
-    const saveBtn = document.querySelector('#record-modal .modal-btn.btn-save');
-    if (saveBtn) {
-      saveBtn.textContent = '更新';
-      saveBtn.onclick = () => updateRecord(id);
-    }
-  }, 50);
-};
-
-window.updateRecord = async function(id) {
-  const r = records[id]; if (!r) return;
-  const date   = document.getElementById('rf-date')?.value   || '';
-  const odo    = document.getElementById('rf-odo')?.value    || '';
-  const amount = document.getElementById('rf-amount')?.value || '';
-  const note   = document.getElementById('rf-note')?.value.trim() || '';
-  const data   = { ...r, date, odometer: odo, amount, note };
-
-  if (r.type === 'fuel') {
-    data.liters = document.getElementById('rf-liters')?.value || '';
-    if (!data.liters && !amount) { alert('請填寫加油量或金額'); return; }
-  } else if (r.type === 'service') {
-    data.item     = document.getElementById('rf-item')?.value.trim()     || '';
-    data.nextOdo  = document.getElementById('rf-next-odo')?.value        || '';
-    data.nextDate = document.getElementById('rf-next-date')?.value       || '';
-    if (!data.item) { alert('請填寫保養項目'); return; }
-  } else {
-    data.item = document.getElementById('rf-item')?.value.trim() || '';
-    if (!data.item) { alert('請填寫費用項目'); return; }
-  }
-  await update(ref(db, 'truck_records/' + id), data);
-  document.getElementById('record-modal').classList.remove('open');
-  showToast('✏️ 紀錄已更新');
-};
-
-window.delRecord = async function(id) {
-  if (!confirm('確定刪除這筆紀錄？')) return;
-  await remove(ref(db, 'truck_records/' + id));
-  showToast('🗑 已刪除');
-};
-
-// ── USER MODAL ──
-window.openUserModal = function() { document.getElementById('user-modal').classList.add('open'); };
-window.closeUserModal = function(e) {
-  if (e && e.target !== document.getElementById('user-modal')) return;
-  document.getElementById('user-modal').classList.remove('open');
+window.undoCheckin = async function() {
+  if (!lastUndoId) return;
+  await remove(ref(db, 'checkins/' + lastUndoId));
+  lastUndoId = null;
+  showToast('已復原', false);
 };
 
 // ── TOAST ──
-function showToast(msg) {
+function showToast(msg, showUndo) {
   clearTimeout(toastTimer);
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  toastTimer = setTimeout(()=>t.classList.remove('show'), 2000);
+  document.getElementById('toast-msg').textContent = msg;
+  const undoEl = document.getElementById('toast-undo');
+  undoEl.style.display = showUndo ? 'inline' : 'none';
+  document.getElementById('toast').classList.add('show');
+  toastTimer = setTimeout(() => {
+    document.getElementById('toast').classList.remove('show');
+  }, showUndo ? 4000 : 2000);
 }
 
-function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// ── VENDOR MODAL ──
+// emoji picker removed – using single char input
+
+// ── Weekday picker ──
+let selectedDays = [];
+function initWeekdayPicker(days) {
+  selectedDays = days ? [...days.map(String)] : [];
+  document.querySelectorAll('#vm-weekdays .weekday-opt').forEach(el => {
+    el.classList.toggle('selected', selectedDays.includes(el.dataset.day));
+    el.onclick = () => {
+      const d = el.dataset.day;
+      if (selectedDays.includes(d)) selectedDays = selectedDays.filter(x => x !== d);
+      else selectedDays.push(d);
+      el.classList.toggle('selected', selectedDays.includes(d));
+    };
+  });
 }
+
+window.openAddVendor = function() {
+  editingVendorId = null;
+  document.getElementById('vendor-modal-title').textContent = '新增攤商';
+  document.getElementById('vm-name').value = '';
+  document.getElementById('vm-icon-char').value = '';
+  document.getElementById('vm-fee').value = '';
+  document.getElementById('vm-contact').value = '';
+  initWeekdayPicker([]);
+  document.getElementById('vm-phone').value = '';
+  document.getElementById('vm-note').value = '';
+  document.getElementById('vendor-modal-actions').innerHTML = `
+    <button class="modal-btn cancel" onclick="closeVendorModal()">取消</button>
+    <button class="modal-btn save" onclick="saveVendor()">儲存</button>
+  `;
+  document.getElementById('vendor-modal').classList.add('open');
+};
+
+function openEditVendor(id) {
+  const v = vendors[id]; if (!v) return;
+  editingVendorId = id;
+  document.getElementById('vendor-modal-title').textContent = '編輯攤商';
+  document.getElementById('vm-name').value      = v.name || '';
+  document.getElementById('vm-icon-char').value = v.icon || v.name.slice(0,1) || '';
+  document.getElementById('vm-fee').value       = v.fee != null ? v.fee : '';
+  document.getElementById('vm-contact').value   = v.contact || '';
+  initWeekdayPicker(v.days || []);
+  document.getElementById('vm-phone').value     = v.phone || '';
+  document.getElementById('vm-note').value      = v.note || '';
+  document.getElementById('vendor-modal-actions').innerHTML = `
+    <button class="modal-btn delete" onclick="deleteVendor('${id}')">刪除</button>
+    <button class="modal-btn cancel" onclick="closeVendorModal()">取消</button>
+    <button class="modal-btn save" onclick="saveVendor()">儲存</button>
+  `;
+  document.getElementById('vendor-modal').classList.add('open');
+}
+
+window.closeVendorModal = function(e) {
+  if (e && e.target !== document.getElementById('vendor-modal')) return;
+  document.getElementById('vendor-modal').classList.remove('open');
+};
+
+window.saveVendor = async function() {
+  const name    = document.getElementById('vm-name').value.trim();
+  const contact = document.getElementById('vm-contact').value.trim();
+  const phone   = document.getElementById('vm-phone').value.trim();
+  const note    = document.getElementById('vm-note').value.trim();
+  if (!name) { alert('請輸入攤商名稱'); return; }
+  const iconChar = (document.getElementById('vm-icon-char').value.trim() || name.slice(0,1));
+  const feeVal   = document.getElementById('vm-fee').value;
+  const fee      = feeVal !== '' ? (parseInt(feeVal) || 0) : 100;
+  const data = { name, icon: iconChar, fee, contact, phone, note, days: selectedDays };
+  if (editingVendorId) await update(ref(db, 'vendors/' + editingVendorId), data);
+  else await push(vendorsRef, data);
+  document.getElementById('vendor-modal').classList.remove('open');
+  showToast(editingVendorId ? '✏️ 攤商已更新' : '✅ 攤商已新增', false);
+};
+
+window.deleteVendor = async function(id) {
+  if (!confirm('確定刪除這個攤商？')) return;
+  await remove(ref(db, 'vendors/' + id));
+  document.getElementById('vendor-modal').classList.remove('open');
+  showToast('🗑 攤商已刪除', false);
+};
+
+// ── SETTINGS MODAL ──
+window.openSettings = function() {
+  document.getElementById('sm-rate').value = settings.rate;
+  document.getElementById('settings-modal').classList.add('open');
+};
+window.closeSettingsModal = function(e) {
+  if (e && e.target !== document.getElementById('settings-modal')) return;
+  document.getElementById('settings-modal').classList.remove('open');
+};
+window.saveSettings = async function() {
+  const rate = parseInt(document.getElementById('sm-rate').value) || 100;
+  settings.rate = rate;
+  document.getElementById('rate-input').value = rate;
+  await update(settingsRef, { rate });
+  document.getElementById('settings-modal').classList.remove('open');
+  updateStats();
+  showToast('✅ 設定已儲存', false);
+};
 </script>
 </body>
 </html>
