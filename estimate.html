@@ -200,7 +200,28 @@ main { padding: 16px; max-width: 600px; margin: 0 auto; }
     </div>
   </div>
 
-  <button class="calc-btn" onclick="calculate()">計算費用</button>
+  <!-- 直接填公里數 -->
+  <div class="card">
+    <div class="card-title">直接填公里數</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <input id="direct-km" type="number" inputmode="decimal" step="0.1" min="0"
+        placeholder="例：3.5"
+        style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:11px 14px;font-size:18px;font-weight:700;font-family:'Zen Dots',monospace;outline:none;transition:border-color 0.15s"
+        oninput="calcDirectKm()">
+      <div style="font-size:14px;color:var(--muted);flex-shrink:0">公里</div>
+    </div>
+    <div id="direct-result" style="margin-top:12px;display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:10px;padding:12px 14px">
+        <div>
+          <div id="direct-km-label" style="font-size:12px;color:var(--muted)"></div>
+          <div id="direct-fuel-label" style="font-size:11px;color:var(--blue);margin-top:2px"></div>
+        </div>
+        <div id="direct-price" style="font-family:'Zen Dots',monospace;font-size:28px;color:var(--accent)"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="calc-btn" onclick="calculate()">計算費用（選地點）</button>
 
   <!-- 結果 -->
   <div class="card" style="margin-top:14px">
@@ -352,6 +373,27 @@ function calcPrice(km, rateNear, rateFar) {
 // ══════════════════════════════════
 // 5. 計算主邏輯
 // ══════════════════════════════════
+function calcDirectKm() {
+  const km = parseFloat(document.getElementById('direct-km').value);
+  const rateNear = parseFloat(document.getElementById('rate-near').value) || 100;
+  const rateFar  = parseFloat(document.getElementById('rate-far').value)  || 80;
+  const resultEl = document.getElementById('direct-result');
+  if (!km || km <= 0) { resultEl.style.display = 'none'; return; }
+  const price = km <= 5 ? Math.round(km * rateNear) : Math.round(km * rateFar);
+  const rateUsed = km <= 5 ? rateNear : rateFar;
+  document.getElementById('direct-km-label').textContent =
+    `${km} 公里 × $${rateUsed}/km（${km<=5?'5公里內':'超過5公里'}）`;
+  if (costPerKm) {
+    const fuelCost = Math.round(costPerKm * km);
+    document.getElementById('direct-fuel-label').textContent =
+      `⛽ 油資約 $${fuelCost}（$${costPerKm.toFixed(1)}/km）`;
+  } else {
+    document.getElementById('direct-fuel-label').textContent = '';
+  }
+  document.getElementById('direct-price').textContent = '$' + price.toLocaleString();
+  resultEl.style.display = 'block';
+}
+
 function calculate() {
   const fromId   = document.getElementById('sel-from').value;
   const toId     = document.getElementById('sel-to').value;
