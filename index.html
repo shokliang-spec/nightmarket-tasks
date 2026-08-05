@@ -348,7 +348,7 @@ main { padding: 16px 16px 120px; }
     </div>
     <div class="modal-field">
       <label class="input-label">備註</label>
-      <input class="input-field" id="vm-note" type="text" placeholder="例：大台車">
+      <textarea class="input-field" id="vm-note" placeholder="例：小北週二10排4號&#10;武聖週三五10排31號" style="resize:none;height:100px;line-height:1.7"></textarea>
     </div>
     <div class="modal-field">
       <label class="input-label">預設出攤日（可多選）</label>
@@ -630,6 +630,7 @@ function renderGrid() {
       <div style="font-size:11px;color:var(--muted)">$${v.fee != null ? v.fee : 100}</div>
       ${v.days && v.days.length ? `<div style="font-size:10px;color:var(--accent);margin-top:2px">${['日','一','二','三','四','五','六'].filter((_,i)=>v.days.includes(String(i)||i)).map(d=>'週'+d).join(' ')}</div>` : ''}
       ${done ? `<div class="vendor-time">✓ ${timeStr}</div>` : ''}
+      ${v.note ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:left;white-space:pre-wrap;line-height:1.5;padding:4px 6px;background:rgba(255,255,255,0.04);border-radius:6px;width:100%">${esc(v.note)}</div>` : ''}
       ${v.contact || v.phone ? `<div class="vendor-contact">${v.contact ? esc(v.contact) : ''}${v.contact && v.phone ? ' · ' : ''}${v.phone ? `<a href="tel:${esc(v.phone)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">📞 ${esc(v.phone)}</a>` : ''}</div>` : ''}
     </div>`;
   }).join('');
