@@ -550,6 +550,12 @@ onValue(ref(db, '.info/connected'), s => {
 let loaded = 0;
 function checkLoaded() { if (++loaded >= 4) document.getElementById('loading-screen').style.display = 'none'; }
 
+// 強制 3 秒後顯示，不管 Firebase 有沒有回應
+setTimeout(() => {
+  document.getElementById('loading-screen').style.display = 'none';
+  render();
+}, 3000);
+
 onValue(vendorsRef,  s => { vendors  = s.val() || {}; render(); checkLoaded(); });
 onValue(checkinsRef, s => { checkins = s.val() || {}; render(); checkLoaded(); });
 onValue(marketsRef,  s => { markets  = s.val() || {}; checkLoaded(); });
