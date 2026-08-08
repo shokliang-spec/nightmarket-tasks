@@ -616,19 +616,6 @@ function renderGrid() {
     return;
   }
 
-  // apply weekday filter
-  const filtered = dowFilter === 'all' ? arr : arr.filter(v =>
-    v.days && v.days.map(String).includes(dowFilter)
-  );
-  const displayArr = filtered.length ? filtered : arr; // fallback if none match
-  if (dowFilter !== 'all' && !filtered.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-icon">📭</div>
-      這天沒有設定出攤的攤商
-    </div>`;
-    return;
-  }
-
   const activeDow = String(new Date(activeDate + 'T00:00:00').getDay());
 
   // apply weekday filter to active vendors only
@@ -636,12 +623,12 @@ function renderGrid() {
     v.days && v.days.map(String).includes(dowFilter)
   );
 
-  if (dowFilter !== 'all' && !filteredActive.length && !activeArr.length) {
+  if (dowFilter !== 'all' && !filteredActive.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div>這天沒有設定出攤的攤商</div>`;
     return;
   }
 
-  const displayArr = filteredActive.length ? filteredActive : (dowFilter !== 'all' ? [] : activeArr);
+  const displayArr = filteredActive;
 
   // find checkin for each vendor on activeDate
   grid.innerHTML = displayArr.map(v => {
