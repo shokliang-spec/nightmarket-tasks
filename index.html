@@ -476,6 +476,7 @@ main { padding: 16px 16px 120px; }
         <button onclick="reportWeekOffset(-1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:16px">‹</button>
         <span id="report-week-label" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
         <button onclick="reportWeekOffset(1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:16px">›</button>
+        <button onclick="exportExcel()" style="background:rgba(52,199,89,0.12);border:1px solid rgba(52,199,89,0.3);color:var(--green);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">📥 Excel</button>
       </div>
     </div>
     <div id="report-content"></div>
@@ -488,6 +489,7 @@ main { padding: 16px 16px 120px; }
   <span class="toast-undo" id="toast-undo" style="display:none" onclick="undoCheckin()">復原</span>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
@@ -1003,6 +1005,63 @@ function renderReport() {
 
   document.getElementById('report-content').innerHTML = html;
 }
+
+window.exportExcel = function() {
+  const { mon, sun } = getWeekRange(reportOffset);
+  const DAYS = ['日','一','二','三','四','五','六'];
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+
+  // collect all checkins in range
+  const arr = Object.entries(checkins)
+    .map(([id,c]) => ({id,...c}))
+    .filter(c => {
+      if (!c.date) return false;
+      const d = new Date(c.date + 'T00:00:00');
+      return d >= mon && d <= sun;
+    })
+    .sort((a,b) => (a.ts||0)-(b.ts||0));
+
+  if (!arr.length) { showToast('這週沒有資料', false); return; }
+
+  // Build Excel rows
+  const rows = [
+    ['日期', '星期', '攤商', '出發地點', '到達地點', '金額', '備註', '打卡時間']
+  ];
+  arr.forEach(c => {
+    const d = new Date(c.date + 'T00:00:00');
+    const ts = c.ts ? new Date(c.ts) : null;
+    const timeStr = ts ? `${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}` : '';
+    rows.push([
+      c.date,
+      '週' + DAYS[d.getDay()],
+      c.vendorName || '',
+      c.from || '',
+      c.to   || '',
+      Number(c.fee) || 0,
+      c.note || '',
+      timeStr
+    ]);
+  });
+
+  // Add summary row
+  const totalFee = arr.reduce((s,c)=>s+(Number(c.fee)||0),0);
+  rows.push([]);
+  rows.push(['合計', '', `共 ${arr.length} 攤`, '', '', totalFee, '', '']);
+
+  // Create workbook
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [
+    {wch:12},{wch:6},{wch:16},{wch:14},{wch:14},{wch:8},{wch:24},{wch:8}
+  ];
+  const wb = XLSX.utils.book_new();
+  const label = reportOffset===0?'本週':reportOffset===-1?'上週':`${fmt(mon)}-${fmt(sun)}`;
+  XLSX.utils.book_append_sheet(wb, ws, label);
+
+  // Download
+  const filename = `攤車紀錄_${c.date ? '' : ''}${fmt(mon)}-${fmt(sun)}.xlsx`.replace(/\//g,'-');
+  XLSX.writeFile(wb, `攤車紀錄_${fmt(mon)}-${fmt(sun)}.xlsx`.replace(/\//g,'-'));
+  showToast('✅ Excel 已下載', false);
+};
 
 window.deleteCheckinFromReport = async function(id) {
   if (!confirm('確定刪除這筆打卡紀錄？')) return;
