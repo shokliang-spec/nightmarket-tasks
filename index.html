@@ -890,8 +890,8 @@ function renderReport() {
               : `${fmt(mon)}－${fmt(sun)}`;
   document.getElementById('report-week-label').textContent = label;
 
-  // collect checkins in range
-  const arr = Object.values(checkins).filter(c => {
+  // collect checkins in range (include id!)
+  const arr = Object.entries(checkins).map(([id,c]) => ({id,...c})).filter(c => {
     if (!c.date) return false;
     const d = new Date(c.date + 'T00:00:00');
     return d >= mon && d <= sun;
