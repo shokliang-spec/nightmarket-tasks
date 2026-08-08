@@ -254,7 +254,7 @@ main { padding: 16px 16px 120px; }
 </head>
 <body>
 
-<div class="loading-screen" id="loading-screen">
+<div class="loading-screen" id="loading-screen" style="display:none">
   <div class="spinner"></div>
   <div style="color:var(--muted);font-size:13px">連線中…</div>
 </div>
@@ -549,7 +549,7 @@ onValue(ref(db, '.info/connected'), s => {
 // ── Data ──
 let loaded = 0;
 function checkLoaded() { if (++loaded >= 4) document.getElementById('loading-screen').style.display = 'none'; }
- 
+
 // 強制 3 秒後顯示，不管 Firebase 有沒有回應
 setTimeout(() => {
   document.getElementById('loading-screen').style.display = 'none';
