@@ -1058,8 +1058,8 @@ window.exportExcel = function() {
   XLSX.utils.book_append_sheet(wb, ws, label);
 
   // Download
-  const filename = `攤車紀錄_${c.date ? '' : ''}${fmt(mon)}-${fmt(sun)}.xlsx`.replace(/\//g,'-');
-  XLSX.writeFile(wb, `攤車紀錄_${fmt(mon)}-${fmt(sun)}.xlsx`.replace(/\//g,'-'));
+  const filename = `攤車紀錄_${fmt(mon)}-${fmt(sun)}.xlsx`.replace(/\//g,'-');
+  XLSX.writeFile(wb, filename);
   showToast('✅ Excel 已下載', false);
 };
 
