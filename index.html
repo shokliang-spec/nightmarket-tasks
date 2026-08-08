@@ -488,12 +488,10 @@ main { padding: 16px 16px 120px; }
   <span class="toast-undo" id="toast-undo" style="display:none" onclick="undoCheckin()">復原</span>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, push, update, remove, set, serverTimestamp }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-const firebaseConfig = {
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+firebase.initializeApp({
   apiKey: "AIzaSyDoT4cAuLGTC9ZAP3uG-0tRNRDsAD-l1-4",
   authDomain: "nightmarket-tasks.firebaseapp.com",
   databaseURL: "https://nightmarket-tasks-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -501,15 +499,23 @@ const firebaseConfig = {
   storageBucket: "nightmarket-tasks.firebasestorage.app",
   messagingSenderId: "241280209238",
   appId: "1:241280209238:web:325be906e04a95987986f7"
-};
+});
 
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
-const vendorsRef   = ref(db, 'vendors');
-const checkinsRef  = ref(db, 'checkins');
-const settingsRef  = ref(db, 'settings');
-const marketsRef   = ref(db, 'markets');
-const estLocsRef   = ref(db, 'est_locations');
+const db = firebase.database();
+
+// Compat SDK wrappers to keep existing code working
+function ref(db, path)           { return db.ref(path); }
+function onValue(r, cb)          { r.on('value', cb); }
+function push(r, data)           { return r.push(data); }
+function update(r, data)         { return r.update(data); }
+function remove(r)               { return r.remove(); }
+function serverTimestamp()       { return firebase.database.ServerValue.TIMESTAMP; }
+
+const vendorsRef   = db.ref('vendors');
+const checkinsRef  = db.ref('checkins');
+const settingsRef  = db.ref('settings');
+const marketsRef   = db.ref('markets');
+const estLocsRef   = db.ref('est_locations');
 
 let vendors     = {};
 let checkins    = {};
