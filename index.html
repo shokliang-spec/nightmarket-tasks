@@ -549,7 +549,7 @@ onValue(ref(db, '.info/connected'), s => {
 // ── Data ──
 let loaded = 0;
 function checkLoaded() { if (++loaded >= 4) document.getElementById('loading-screen').style.display = 'none'; }
-
+ 
 // 強制 3 秒後顯示，不管 Firebase 有沒有回應
 setTimeout(() => {
   document.getElementById('loading-screen').style.display = 'none';
