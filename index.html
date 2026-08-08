@@ -362,6 +362,17 @@ main { padding: 16px 16px 120px; }
         <div class="weekday-opt" data-day="0">日</div>
       </div>
     </div>
+    <div class="modal-field">
+      <label class="input-label">攤商狀態</label>
+      <div id="vm-status-toggle" onclick="toggleVmStatus()" style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.15s">
+        <div id="vm-status-dot" style="width:12px;height:12px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+        <div>
+          <div id="vm-status-label" style="font-size:14px;font-weight:700">啟用中</div>
+          <div id="vm-status-sub" style="font-size:11px;color:var(--muted);margin-top:1px">顯示在主畫面</div>
+        </div>
+        <div style="margin-left:auto;font-size:12px;color:var(--muted)">點擊切換</div>
+      </div>
+    </div>
     <div class="modal-actions" id="vendor-modal-actions"></div>
   </div>
 </div>
@@ -584,7 +595,10 @@ function renderGrid() {
   const grid = document.getElementById('vendor-grid');
   const arr  = Object.entries(vendors).map(([id,v]) => ({ id, ...v }));
 
-  if (!arr.length) {
+  const activeArr   = arr.filter(v => v.active !== false);
+  const inactiveArr = arr.filter(v => v.active === false);
+
+  if (!activeArr.length && !inactiveArr.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="empty-icon">🛒</div>
       還沒有攤商<br>點右上角 ＋ 新增
@@ -606,6 +620,19 @@ function renderGrid() {
   }
 
   const activeDow = String(new Date(activeDate + 'T00:00:00').getDay());
+
+  // apply weekday filter to active vendors only
+  const filteredActive = dowFilter === 'all' ? activeArr : activeArr.filter(v =>
+    v.days && v.days.map(String).includes(dowFilter)
+  );
+
+  if (dowFilter !== 'all' && !filteredActive.length && !activeArr.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div>這天沒有設定出攤的攤商</div>`;
+    return;
+  }
+
+  const displayArr = filteredActive.length ? filteredActive : (dowFilter !== 'all' ? [] : activeArr);
+
   // find checkin for each vendor on activeDate
   grid.innerHTML = displayArr.map(v => {
     const checkin = Object.values(checkins).find(c => c.vendorId === v.id && c.date === activeDate);
@@ -634,6 +661,29 @@ function renderGrid() {
       ${v.contact || v.phone ? `<div class="vendor-contact">${v.contact ? esc(v.contact) : ''}${v.contact && v.phone ? ' · ' : ''}${v.phone ? `<a href="tel:${esc(v.phone)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">📞 ${esc(v.phone)}</a>` : ''}</div>` : ''}
     </div>`;
   }).join('');
+
+  // Add inactive vendors section below
+  if (inactiveArr.length) {
+    const inactiveHtml = inactiveArr.map(v =>
+      `<div style="background:var(--surface2);border:1px dashed var(--border);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;opacity:0.55"
+        data-vendor-id="${v.id}"
+        onclick="vcClick('${v.id}')"
+        oncontextmenu="vcRightClick(event,'${v.id}')"
+        onmousedown="vcMouseDown(event,'${v.id}')"
+        onmouseup="vcMouseUp('${v.id}')"
+        onmouseleave="vcMouseUp('${v.id}')"
+        ontouchstart="vcTouchStart(event,'${v.id}')"
+        ontouchend="vcTouchEnd(event,'${v.id}')"
+        ontouchcancel="vcTouchCancel('${v.id}')">
+        <span style="font-size:20px;font-weight:900">${esc(v.icon||v.name.slice(0,1))}</span>
+        <span style="font-size:12px;font-weight:700">${esc(v.name)}</span>
+      </div>`
+    ).join('');
+    grid.innerHTML += `<div style="grid-column:1/-1;margin-top:8px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:0.08em;margin-bottom:8px">⏸ 已停用（${inactiveArr.length}）— 長按可重新啟用</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${inactiveHtml}</div>
+    </div>`;
+  }
 }
 
 function updateStats() {
@@ -1030,6 +1080,28 @@ function showToast(msg, showUndo) {
 // ── VENDOR MODAL ──
 // emoji picker removed – using single char input
 
+// ── Vendor status toggle ──
+let vmStatus = true; // true = active, false = inactive
+
+window.toggleVmStatus = function() {
+  vmStatus = !vmStatus;
+  const dot   = document.getElementById('vm-status-dot');
+  const label = document.getElementById('vm-status-label');
+  const sub   = document.getElementById('vm-status-sub');
+  const toggle= document.getElementById('vm-status-toggle');
+  if (vmStatus) {
+    dot.style.background   = 'var(--green)';
+    label.textContent      = '啟用中';
+    sub.textContent        = '顯示在主畫面';
+    toggle.style.borderColor = 'var(--border)';
+  } else {
+    dot.style.background   = 'var(--muted)';
+    label.textContent      = '已停用';
+    sub.textContent        = '隱藏在主畫面，資料保留';
+    toggle.style.borderColor = 'var(--muted)';
+  }
+};
+
 // ── Weekday picker ──
 let selectedDays = [];
 function initWeekdayPicker(days) {
@@ -1053,6 +1125,11 @@ window.openAddVendor = function() {
   document.getElementById('vm-fee').value = '';
   document.getElementById('vm-contact').value = '';
   initWeekdayPicker([]);
+  vmStatus = true;
+  document.getElementById('vm-status-dot').style.background = 'var(--green)';
+  document.getElementById('vm-status-label').textContent = '啟用中';
+  document.getElementById('vm-status-sub').textContent = '顯示在主畫面';
+  document.getElementById('vm-status-toggle').style.borderColor = 'var(--border)';
   document.getElementById('vm-phone').value = '';
   document.getElementById('vm-note').value = '';
   document.getElementById('vendor-modal-actions').innerHTML = `
@@ -1071,6 +1148,22 @@ function openEditVendor(id) {
   document.getElementById('vm-fee').value       = v.fee != null ? v.fee : '';
   document.getElementById('vm-contact').value   = v.contact || '';
   initWeekdayPicker(v.days || []);
+  vmStatus = v.active !== false; // default true
+  const dot2   = document.getElementById('vm-status-dot');
+  const label2 = document.getElementById('vm-status-label');
+  const sub2   = document.getElementById('vm-status-sub');
+  const toggle2= document.getElementById('vm-status-toggle');
+  if (vmStatus) {
+    dot2.style.background   = 'var(--green)';
+    label2.textContent      = '啟用中';
+    sub2.textContent        = '顯示在主畫面';
+    toggle2.style.borderColor = 'var(--border)';
+  } else {
+    dot2.style.background   = 'var(--muted)';
+    label2.textContent      = '已停用';
+    sub2.textContent        = '隱藏在主畫面，資料保留';
+    toggle2.style.borderColor = 'var(--muted)';
+  }
   document.getElementById('vm-phone').value     = v.phone || '';
   document.getElementById('vm-note').value      = v.note || '';
   document.getElementById('vendor-modal-actions').innerHTML = `
@@ -1095,7 +1188,7 @@ window.saveVendor = async function() {
   const iconChar = (document.getElementById('vm-icon-char').value.trim() || name.slice(0,1));
   const feeVal   = document.getElementById('vm-fee').value;
   const fee      = feeVal !== '' ? (parseInt(feeVal) || 0) : 100;
-  const data = { name, icon: iconChar, fee, contact, phone, note, days: selectedDays };
+  const data = { name, icon: iconChar, fee, contact, phone, note, days: selectedDays, active: vmStatus };
   if (editingVendorId) await update(ref(db, 'vendors/' + editingVendorId), data);
   else await push(vendorsRef, data);
   document.getElementById('vendor-modal').classList.remove('open');
