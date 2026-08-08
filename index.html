@@ -550,16 +550,20 @@ onValue(ref(db, '.info/connected'), s => {
 let loaded = 0;
 function checkLoaded() { if (++loaded >= 4) document.getElementById('loading-screen').style.display = 'none'; }
 
-// 強制 3 秒後顯示，不管 Firebase 有沒有回應
+// 強制 2 秒後顯示並 render，不管 Firebase 有沒有回應
 setTimeout(() => {
   document.getElementById('loading-screen').style.display = 'none';
   render();
-}, 3000);
+  updateStats();
+}, 2000);
 
-onValue(vendorsRef,  s => { vendors  = s.val() || {}; render(); checkLoaded(); });
-onValue(checkinsRef, s => { checkins = s.val() || {}; render(); checkLoaded(); });
-onValue(marketsRef,  s => { markets  = s.val() || {}; checkLoaded(); });
-onValue(estLocsRef,  s => { estLocs  = s.val() || {}; });
+try {
+  onValue(vendorsRef,  s => { vendors  = s.val() || {}; render(); checkLoaded(); });
+  onValue(checkinsRef, s => { checkins = s.val() || {}; render(); checkLoaded(); });
+  onValue(marketsRef,  s => { markets  = s.val() || {}; checkLoaded(); });
+  onValue(estLocsRef,  s => { estLocs  = s.val() || {}; });
+} catch(e) { console.warn('Firebase data error:', e); }
+
 onValue(settingsRef, s => {
   const v = s.val() || {};
   settings.rate = v.rate || 100;
