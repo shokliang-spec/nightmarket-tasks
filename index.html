@@ -569,7 +569,7 @@ try {
   onValue(vendorsRef,  s => { vendors  = s.val() || {}; render(); checkLoaded(); });
   onValue(checkinsRef, s => { checkins = s.val() || {}; render(); checkLoaded(); });
   onValue(marketsRef,  s => { markets  = s.val() || {}; checkLoaded(); });
-  onValue(estLocsRef,  s => { estLocs  = s.val() || {}; });
+  onValue(estLocsRef,  s => { estLocs  = s.val() || {}; render(); });
 } catch(e) { console.warn('Firebase data error:', e); }
 
 onValue(settingsRef, s => {
