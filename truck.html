@@ -553,9 +553,19 @@ window.openRecordModal = function() {
   const titles = { fuel:'⛽ 新增加油紀錄', service:'🔧 新增保養紀錄', expense:'💸 新增費用紀錄' };
   document.getElementById('record-modal-title').textContent = titles[activeTab];
 
+  const userOptions = Object.values(users).map(u =>
+    `<option value="${u.name}" ${u.name===currentUser?.name?'selected':''}>${u.name}</option>`
+  ).join('');
+
   let fields = `<div class="field-row">
     <div class="field"><label>日期</label><input id="rf-date" type="date" value="${today}"></div>
     <div class="field"><label>里程 (km)</label><input id="rf-odo" type="number" inputmode="numeric" placeholder="例：2795"></div>
+  </div>
+  <div class="field">
+    <label>紀錄人員</label>
+    <select id="rf-user" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:11px 13px;font-size:14px;font-family:'Noto Sans TC',sans-serif;outline:none;appearance:none">
+      ${userOptions}
+    </select>
   </div>`;
 
   if (activeTab === 'fuel') {
@@ -589,7 +599,9 @@ window.saveRecord = async function() {
   const odo    = document.getElementById('rf-odo')?.value || '';
   const amount = document.getElementById('rf-amount')?.value || '';
   const note   = document.getElementById('rf-note')?.value.trim() || '';
-  const data   = { type: activeTab, date, odometer: odo, amount, note, userName: currentUser.name, userId: currentUser.id, ts: Date.now() };
+  const selectedUserName = document.getElementById('rf-user')?.value || currentUser.name;
+  const selectedUser = Object.values(users).find(u=>u.name===selectedUserName);
+  const data   = { type: activeTab, date, odometer: odo, amount, note, userName: selectedUserName, userId: selectedUser?.id || currentUser.id, ts: Date.now() };
 
   if (activeTab === 'fuel') {
     data.liters = document.getElementById('rf-liters')?.value || '';
@@ -621,6 +633,7 @@ window.editRecord = function(id) {
   setTimeout(() => {
     if (document.getElementById('rf-date'))    document.getElementById('rf-date').value    = r.date    || '';
     if (document.getElementById('rf-odo'))     document.getElementById('rf-odo').value     = r.odometer|| '';
+    if (document.getElementById('rf-user'))    document.getElementById('rf-user').value    = r.userName|| '';
     if (document.getElementById('rf-amount'))  document.getElementById('rf-amount').value  = r.amount  || '';
     if (document.getElementById('rf-note'))    document.getElementById('rf-note').value    = r.note    || '';
     if (r.type === 'fuel') {
@@ -650,7 +663,8 @@ window.updateRecord = async function(id) {
   const odo    = document.getElementById('rf-odo')?.value    || '';
   const amount = document.getElementById('rf-amount')?.value || '';
   const note   = document.getElementById('rf-note')?.value.trim() || '';
-  const data   = { ...r, date, odometer: odo, amount, note };
+  const selectedUserName = document.getElementById('rf-user')?.value || r.userName;
+  const data   = { ...r, date, odometer: odo, amount, note, userName: selectedUserName };
 
   if (r.type === 'fuel') {
     data.liters = document.getElementById('rf-liters')?.value || '';
